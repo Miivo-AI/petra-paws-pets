@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * LT Superior Serif — commercial font (Linotype).
+ * Drop the font files into /public/fonts/ with these exact names:
+ *   LTSuperiorSerif-Semibold.woff2
+ *   LTSuperiorSerif-Semibold.woff
+ * Until then, Playfair Display is used as the fallback.
+ */
+@font-face {
+  font-family: "LT Superior Serif";
+  src:
+    url("/fonts/LTSuperiorSerif-Semibold.woff2") format("woff2"),
+    url("/fonts/LTSuperiorSerif-Semibold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 160 40% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 160 40% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 40% 10%;
+    /* primary = petra gold */
+    --primary: 40 56% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 43 40% 92%;
+    --secondary-foreground: 160 40% 10%;
+    --muted: 43 30% 94%;
+    --muted-foreground: 160 15% 45%;
+    --accent: 43 40% 92%;
+    --accent-foreground: 160 40% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 43 20% 87%;
+    --input: 43 20% 87%;
+    --ring: 40 56% 50%;
+    --radius: 0.625rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Apply LT Superior Serif (with Playfair Display fallback) to all headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "LT Superior Serif", var(--font-playfair), Georgia, serif;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em; /* -2px at 100px = -2% */
+  }
+}
+
+/* Infinite marquee for gallery carousel */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+@layer utilities {
+  .section-pad {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  .container-petra {
+    @apply mx-auto max-w-6xl section-pad;
+  }
+  /* Heading utility that exactly matches the Figma spec */
+  .heading-display {
+    font-family: "LT Superior Serif", var(--font-playfair), Georgia, serif;
+    font-weight: 600;
+    font-size: 56px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+}
