@@ -79,6 +79,7 @@ export async function GET(
     .update({
       status: "confirmed",
       hold_expires_at: null,
+      payment_status: "paid",
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

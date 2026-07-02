@@ -1,6 +1,8 @@
 export type PetType = "dog" | "cat";
 export type PetSize = "small" | "medium" | "large";
 export type BookingStatus = "pending_payment" | "confirmed" | "cancelled";
+export type PaymentMethod = "online" | "pay_on_arrival";
+export type PaymentStatus = "unpaid" | "paid";
 
 export interface Service {
   id: string;
@@ -72,6 +74,8 @@ export interface Appointment {
   status: BookingStatus;
   hold_expires_at: string | null;
   ziina_payment_id: string | null;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
 
   created_at: string;
   updated_at: string;
@@ -107,6 +111,7 @@ export interface CreateBookingRequest {
   pet_name: string;
   pet_breed?: string;
   special_notes?: string;
+  payment_method: PaymentMethod;
 }
 
 // ── Availability response (GET /api/availability) ────────────

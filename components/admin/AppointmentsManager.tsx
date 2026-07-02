@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Eye, Check, X, Clock } from "lucide-react";
+import { Search, Eye, Check, X, Clock, Wallet, CreditCard, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
-import type { Appointment, BookingStatus } from "@/lib/types";
+import type { Appointment, BookingStatus, PaymentStatus } from "@/lib/types";
 
 const STATUS_CONFIG: Record<
   BookingStatus,
@@ -81,6 +81,19 @@ export default function AppointmentsManager({
       .eq("id", id);
   }
 
+  async function markPaymentStatus(id: string, payment_status: PaymentStatus) {
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, payment_status } : a))
+    );
+    if (selectedAppt?.id === id) {
+      setSelectedAppt((prev) => (prev ? { ...prev, payment_status } : null));
+    }
+    await supabase
+      .from("appointments")
+      .update({ payment_status, updated_at: new Date().toISOString() })
+      .eq("id", id);
+  }
+
   async function deleteAppointment(id: string) {
     if (!confirm("Delete this appointment permanently?")) return;
     setAppointments((prev) => prev.filter((a) => a.id !== id));
@@ -129,6 +142,7 @@ export default function AppointmentsManager({
                 <th className="px-4 py-3 font-medium text-muted-foreground">Service</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Date & Time</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Total</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Payment</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
               </tr>
@@ -137,7 +151,7 @@ export default function AppointmentsManager({
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-12 text-center text-muted-foreground"
                   >
                     No appointments found.
@@ -177,6 +191,21 @@ export default function AppointmentsManager({
                       {formatCurrency(appt.total)}
                     </td>
                     <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        {appt.payment_method === "pay_on_arrival" ? (
+                          <Wallet className="h-3.5 w-3.5 text-petra-green/50" />
+                        ) : (
+                          <CreditCard className="h-3.5 w-3.5 text-petra-green/50" />
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {appt.payment_method === "pay_on_arrival" ? "On Arrival" : "Online"}
+                        </span>
+                        <Badge variant={appt.payment_status === "paid" ? "success" : "warning"}>
+                          {appt.payment_status === "paid" ? "Paid" : "Unpaid"}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       <Badge variant={STATUS_CONFIG[appt.status].variant}>
                         {STATUS_CONFIG[appt.status].label}
                       </Badge>
@@ -192,6 +221,18 @@ export default function AppointmentsManager({
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
+                        {appt.payment_method === "pay_on_arrival" &&
+                          appt.payment_status === "unpaid" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-green-600 hover:text-green-700"
+                              title="Mark cash collected"
+                              onClick={() => markPaymentStatus(appt.id, "paid")}
+                            >
+                              <Banknote className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         {appt.status === "pending_payment" && (
                           <Button
                             variant="ghost"
@@ -312,6 +353,42 @@ export default function AppointmentsManager({
                   <span className="text-primary">
                     {formatCurrency(selectedAppt.total)}
                   </span>
+                </div>
+                <div className="flex items-center justify-between border-t pt-2 mt-1">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    {selectedAppt.payment_method === "pay_on_arrival" ? (
+                      <Wallet className="h-3.5 w-3.5" />
+                    ) : (
+                      <CreditCard className="h-3.5 w-3.5" />
+                    )}
+                    {selectedAppt.payment_method === "pay_on_arrival"
+                      ? "Pay on Arrival"
+                      : "Paid Online"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={selectedAppt.payment_status === "paid" ? "success" : "warning"}
+                    >
+                      {selectedAppt.payment_status === "paid" ? "Paid" : "Unpaid"}
+                    </Badge>
+                    {selectedAppt.payment_method === "pay_on_arrival" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() =>
+                          markPaymentStatus(
+                            selectedAppt.id,
+                            selectedAppt.payment_status === "paid" ? "unpaid" : "paid"
+                          )
+                        }
+                      >
+                        {selectedAppt.payment_status === "paid"
+                          ? "Mark Unpaid"
+                          : "Mark Cash Collected"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 

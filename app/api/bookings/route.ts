@@ -18,7 +18,8 @@ import {
   calculateTotals,
   generateBookingReference,
 } from "@/lib/booking/pricing";
-import type { CreateBookingRequest, PetSize } from "@/lib/types";
+import { sendBookingConfirmation, sendOwnerBookingAlert } from "@/lib/email";
+import type { Appointment, CreateBookingRequest, PetSize, Service, ServiceZone } from "@/lib/types";
 import { HOLD_TTL_MINUTES } from "@/lib/types";
 
 const ZIINA_API_URL = process.env.ZIINA_API_URL ?? "https://api-v2.ziina.com/api";
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
     pet_name,
     pet_breed,
     special_notes,
+    payment_method,
   } = body;
 
   // ── Basic validation ─────────────────────────────────────────
@@ -103,6 +105,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "size is required for dogs" }, { status: 400 });
   }
 
+  if (!["online", "pay_on_arrival"].includes(payment_method)) {
+    return NextResponse.json({ error: "Invalid payment_method" }, { status: 400 });
+  }
+
   const supabase = await createClient();
 
   // ── Fetch service for duration ───────────────────────────────
@@ -115,6 +121,17 @@ export async function POST(req: NextRequest) {
 
   if (!service) {
     return NextResponse.json({ error: "Service not found or inactive" }, { status: 404 });
+  }
+
+  // ── Fetch zone (needed for pay-on-arrival confirmation email) ─
+  const { data: zone } = await supabase
+    .from("service_zones")
+    .select("id, name")
+    .eq("id", zone_id)
+    .single();
+
+  if (!zone) {
+    return NextResponse.json({ error: "Zone not found" }, { status: 404 });
   }
 
   // ── Fetch prices ─────────────────────────────────────────────
@@ -157,11 +174,13 @@ export async function POST(req: NextRequest) {
   const end_time = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 
   const { subtotal: sub, vat, total } = calculateTotals(subtotal);
+  const isPayOnArrival = payment_method === "pay_on_arrival";
 
-  // ── Create pending_payment booking ───────────────────────────
-  const holdExpiresAt = new Date(
-    Date.now() + HOLD_TTL_MINUTES * 60 * 1000
-  ).toISOString();
+  // Pay-on-arrival bookings need no payment hold — they're confirmed
+  // immediately. Online bookings hold the slot while the customer pays.
+  const holdExpiresAt = isPayOnArrival
+    ? null
+    : new Date(Date.now() + HOLD_TTL_MINUTES * 60 * 1000).toISOString();
 
   let bookingRef = generateBookingReference();
   // Retry on reference collision (extremely rare)
@@ -196,8 +215,10 @@ export async function POST(req: NextRequest) {
       subtotal: sub,
       vat,
       total,
-      status: "pending_payment",
+      status: isPayOnArrival ? "confirmed" : "pending_payment",
       hold_expires_at: holdExpiresAt,
+      payment_method,
+      payment_status: "unpaid",
     })
     .select()
     .single();
@@ -210,8 +231,31 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Create Ziina payment intent ──────────────────────────────
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  // ── Pay on arrival: confirmed immediately, no payment gateway ─
+  if (isPayOnArrival) {
+    Promise.all([
+      sendBookingConfirmation(
+        booking as Appointment,
+        service as Pick<Service, "name">,
+        zone as Pick<ServiceZone, "name">
+      ),
+      sendOwnerBookingAlert(
+        booking as Appointment,
+        service as Pick<Service, "name">,
+        zone as Pick<ServiceZone, "name">
+      ),
+    ]).catch((err) => console.error("[bookings] email error:", err));
+
+    return NextResponse.json({
+      bookingId: booking.id,
+      bookingReference: bookingRef,
+      redirectUrl: `${siteUrl}/bookings/${booking.lookup_token}`,
+    });
+  }
+
+  // ── Online: create Ziina payment intent ───────────────────────
   let redirectUrl: string;
 
   try {
