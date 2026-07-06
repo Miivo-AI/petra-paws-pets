@@ -69,29 +69,51 @@ export default function AppointmentsManager({
   });
 
   async function updateStatus(id: string, status: BookingStatus) {
+    const previous = appointments.find((a) => a.id === id)?.status;
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a))
     );
     if (selectedAppt?.id === id) {
       setSelectedAppt((prev) => (prev ? { ...prev, status } : null));
     }
-    await supabase
+    const { error } = await supabase
       .from("appointments")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", id);
+    if (error && previous) {
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: previous } : a))
+      );
+      if (selectedAppt?.id === id) {
+        setSelectedAppt((prev) => (prev ? { ...prev, status: previous } : null));
+      }
+      alert("Failed to update status. Please try again.");
+    }
   }
 
   async function markPaymentStatus(id: string, payment_status: PaymentStatus) {
+    const previous = appointments.find((a) => a.id === id)?.payment_status;
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, payment_status } : a))
     );
     if (selectedAppt?.id === id) {
       setSelectedAppt((prev) => (prev ? { ...prev, payment_status } : null));
     }
-    await supabase
+    const { error } = await supabase
       .from("appointments")
       .update({ payment_status, updated_at: new Date().toISOString() })
       .eq("id", id);
+    if (error && previous) {
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, payment_status: previous } : a))
+      );
+      if (selectedAppt?.id === id) {
+        setSelectedAppt((prev) =>
+          prev ? { ...prev, payment_status: previous } : null
+        );
+      }
+      alert("Failed to update payment status. Please try again.");
+    }
   }
 
   async function deleteAppointment(id: string) {

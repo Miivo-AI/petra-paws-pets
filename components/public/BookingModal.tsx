@@ -139,7 +139,11 @@ export default function BookingModal() {
   // initializer, so crypto.randomUUID() never runs during SSR.
   const [idempotencyKey, setIdempotencyKey] = useState("");
 
-  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split("T")[0];
+  }, []);
 
   // Reset everything when the modal closes
   useEffect(() => {
@@ -173,13 +177,22 @@ export default function BookingModal() {
     if (!isOpen) return;
     setLoadingData(true);
     Promise.all([
-      fetch("/api/services").then((r) => r.json()),
-      fetch("/api/zones").then((r) => r.json()),
+      fetch("/api/services").then((r) => {
+        if (!r.ok) throw new Error("Failed to load services");
+        return r.json();
+      }),
+      fetch("/api/zones").then((r) => {
+        if (!r.ok) throw new Error("Failed to load zones");
+        return r.json();
+      }),
     ])
       .then(([svc, zn]) => {
         setServices(svc.services ?? []);
         setPrices(svc.prices ?? []);
         setZones(zn.zones ?? []);
+      })
+      .catch(() => {
+        setInitError("Failed to load booking data. Please try again.");
       })
       .finally(() => setLoadingData(false));
   }, [isOpen]);
