@@ -74,6 +74,10 @@ export interface Appointment {
   status: BookingStatus;
   hold_expires_at: string | null;
   ziina_payment_id: string | null;
+  ziina_redirect_url: string | null;
+  ziina_claimed_at: string | null;
+  confirmation_sent_at: string | null;
+  idempotency_key: string | null;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
 
@@ -112,6 +116,7 @@ export interface CreateBookingRequest {
   pet_breed?: string;
   special_notes?: string;
   payment_method: PaymentMethod;
+  idempotency_key?: string;
 }
 
 // ── Availability response (GET /api/availability) ────────────

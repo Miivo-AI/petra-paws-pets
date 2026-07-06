@@ -132,6 +132,13 @@ export default function BookingModal() {
     redirectUrl: string;
   } | null>(null);
 
+  // Stable per booking-attempt key so a network-level retry of the
+  // same submit doesn't create a second booking / second Ziina
+  // payment intent server-side. Set (and regenerated on close) by the
+  // reset effect below — deferred to an effect, not a useState
+  // initializer, so crypto.randomUUID() never runs during SSR.
+  const [idempotencyKey, setIdempotencyKey] = useState("");
+
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   // Reset everything when the modal closes
@@ -158,6 +165,7 @@ export default function BookingModal() {
     setSubmittingMethod(null);
     setBookingResult(null);
     setInitError(null);
+    setIdempotencyKey(crypto.randomUUID());
   }, [isOpen]);
 
   // Fetch services + zones once when opened
@@ -291,6 +299,7 @@ export default function BookingModal() {
           pet_breed: petBreed || undefined,
           special_notes: notes || undefined,
           payment_method: method,
+          idempotency_key: idempotencyKey,
         }),
       });
 
@@ -299,6 +308,13 @@ export default function BookingModal() {
       if (!res.ok) {
         setSubmitError(data.error ?? "Failed to create booking. Please try again.");
         setSubmittingMethod(null);
+        if (res.status === 409) {
+          // Someone else took the slot between selection and submit —
+          // send them back to re-pick a time rather than letting them
+          // retry into the same conflict.
+          setStartTime("");
+          setStep(2);
+        }
         return;
       }
 
