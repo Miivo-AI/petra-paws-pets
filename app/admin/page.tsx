@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Clock, Scissors } from "lucide-react";
+import { CalendarDays, Clock, Scissors, Wallet } from "lucide-react";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
 const STATUS_COLORS = {
@@ -18,6 +18,7 @@ export default async function AdminDashboard() {
     { count: totalConfirmed },
     { count: pendingCount },
     { count: activeServices },
+    { count: cashDueCount },
     { data: todayAppts },
     { data: upcomingAppts },
   ] = await Promise.all([
@@ -34,6 +35,12 @@ export default async function AdminDashboard() {
       .from("services")
       .select("*", { count: "exact", head: true })
       .eq("active", true),
+    supabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "confirmed")
+      .eq("payment_method", "pay_on_arrival")
+      .eq("payment_status", "unpaid"),
     supabase
       .from("appointments")
       .select("*, service:services(name), zone:service_zones(name)")
@@ -66,6 +73,13 @@ export default async function AdminDashboard() {
       bg: "bg-yellow-50",
     },
     {
+      label: "Cash to Collect",
+      value: cashDueCount ?? 0,
+      icon: Wallet,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+    },
+    {
       label: "Active Services",
       value: activeServices ?? 0,
       icon: Scissors,
@@ -83,7 +97,7 @@ export default async function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.label}>
             <CardContent className="flex items-center gap-4 pt-6">
@@ -141,6 +155,12 @@ export default async function AdminDashboard() {
                     <p className="text-xs text-muted-foreground">
                       {formatCurrency(appt.total)}
                     </p>
+                    {appt.payment_method === "pay_on_arrival" &&
+                      appt.payment_status === "unpaid" && (
+                        <Badge variant="warning" className="mt-1">
+                          Collect Cash
+                        </Badge>
+                      )}
                   </div>
                 </div>
               ))}

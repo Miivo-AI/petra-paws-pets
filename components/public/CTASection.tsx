@@ -1,7 +1,11 @@
-import Link from "next/link";
+"use client";
+
 import Image from "next/image";
+import { useBookingModalStore } from "@/lib/store/booking-modal";
 
 export default function CTASection() {
+  const openBooking = useBookingModalStore((s) => s.open);
+
   return (
     <section className="relative bg-white overflow-hidden lg:h-[440px]">
       <div className="flex flex-col lg:grid lg:grid-cols-[33%_67%] lg:h-full">
@@ -16,12 +20,12 @@ export default function CTASection() {
             Professional care for every furry friend.
           </p>
           <div className="mt-6 lg:mt-7">
-            <Link
-              href="/book"
+            <button
+              onClick={openBooking}
               className="inline-flex items-center rounded-full bg-petra-gold px-7 py-3 text-sm font-bold text-white hover:bg-petra-gold-light transition-colors"
             >
               Book a Grooming
-            </Link>
+            </button>
           </div>
         </div>
 

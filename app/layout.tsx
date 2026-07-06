@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
+import BookingModal from "@/components/public/BookingModal";
 import "./globals.css";
 
 const geist = Geist({
@@ -47,7 +48,10 @@ export default function RootLayout({
       lang="en"
       className={`scroll-smooth ${geist.variable} ${playfair.variable} ${jakarta.variable}`}
     >
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        {children}
+        <BookingModal />
+      </body>
     </html>
   );
 }

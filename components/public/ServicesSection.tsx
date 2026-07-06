@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import type { PetType, PetSize } from "@/lib/types";
+import { useBookingModalStore } from "@/lib/store/booking-modal";
 
 type ServiceWithPrices = {
   id: string;
@@ -170,6 +170,7 @@ export default function ServicesSection({
   services: ServiceWithPrices[];
 }) {
   const [petType, setPetType] = useState<PetType>("dog");
+  const openBooking = useBookingModalStore((s) => s.open);
 
   const displayServices =
     services.length > 0 ? services.filter((s) => s.active) : FALLBACK_SERVICES;
@@ -194,7 +195,18 @@ export default function ServicesSection({
               src="/images/dog-updated.png"
               alt="Happy dog ready for grooming"
               fill
-              className="object-contain object-left"
+              className={`object-contain object-left transition-opacity duration-500 ease-in-out ${
+                petType === "dog" ? "opacity-100" : "opacity-0"
+              }`}
+              sizes="(min-width: 1024px) 46vw, 100vw"
+            />
+            <Image
+              src="/images/cat-service.png"
+              alt="Happy cat ready for grooming"
+              fill
+              className={`object-contain object-left transition-opacity duration-500 ease-in-out ${
+                petType === "cat" ? "opacity-100" : "opacity-0"
+              }`}
               sizes="(min-width: 1024px) 46vw, 100vw"
             />
           </div>
@@ -239,12 +251,12 @@ export default function ServicesSection({
           </div>
 
           {/* CTA */}
-          <Link
-            href="/book"
+          <button
+            onClick={openBooking}
             className="inline-flex items-center justify-center self-center lg:self-start rounded-full bg-petra-gold px-9 py-3.5 text-sm font-bold text-white hover:opacity-90 transition-opacity"
           >
             Book a Grooming
-          </Link>
+          </button>
 
         </div>
       </div>

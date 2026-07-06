@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { useBookingModalStore } from "@/lib/store/booking-modal";
 
 const NAV_LINKS = [
   { label: "How it works", href: "#how-it-works" },
@@ -16,6 +17,7 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const openBooking = useBookingModalStore((s) => s.open);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -66,22 +68,22 @@ export default function Navbar() {
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/book"
+            <button
+              onClick={openBooking}
               className="inline-flex items-center gap-2 rounded-full bg-petra-gold px-5 py-2 text-sm font-semibold text-white hover:bg-petra-gold-light transition-colors"
             >
               Book a Grooming
-            </Link>
+            </button>
           </div>
 
           {/* Mobile CTA + hamburger */}
           <div className="flex md:hidden items-center gap-3">
-            <Link
-              href="/book"
+            <button
+              onClick={openBooking}
               className="inline-flex items-center gap-2 rounded-full bg-petra-gold px-5 py-2 text-sm font-semibold text-white hover:bg-petra-gold-light transition-colors"
             >
               Book Now
-            </Link>
+            </button>
             <button
               className="text-white shrink-0"
               onClick={() => setMenuOpen((o) => !o)}
@@ -106,12 +108,15 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/book"
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              openBooking();
+            }}
             className="block w-full text-center rounded-full bg-petra-gold px-5 py-2.5 text-sm font-semibold text-white"
           >
             Book a Grooming
-          </Link>
+          </button>
         </div>
       )}
     </header>
