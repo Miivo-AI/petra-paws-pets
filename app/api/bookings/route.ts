@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { validateSlot } from "@/lib/booking/availability";
 import {
   lookupPrice,
@@ -136,7 +136,7 @@ async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   // ── Fetch service for duration ───────────────────────────────
   const { data: service } = await supabase
