@@ -276,6 +276,27 @@ async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
   }
   bookingRef = booking.booking_reference;
 
+  // create_booking_atomic returns the existing row on an idempotent
+  // replay (same idempotency_key) regardless of its current status. If
+  // a prior attempt already cancelled this booking (e.g. its Ziina call
+  // failed, or its payment hold expired), resurrecting it here would
+  // silently reuse a dead row — confirmBookingIfPaid only ever confirms
+  // bookings still in pending_payment, so any payment collected against
+  // it would never actually confirm the appointment.
+  if (booking.status === "cancelled") {
+    console.warn(
+      `[bookings] idempotent replay of cancelled booking ${booking.id} (${bookingRef}) — refusing to reuse it`,
+      { idempotencyKey: idempotency_key ?? null }
+    );
+    return NextResponse.json(
+      {
+        error:
+          "This booking attempt was cancelled. Please start a new booking.",
+      },
+      { status: 409 }
+    );
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   // ── Pay on arrival: confirmed immediately, no payment gateway ─
@@ -325,7 +346,7 @@ async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
     // Atomically claim the right to create the Ziina intent, so two
     // concurrent requests sharing the same idempotency key can't both
     // call Ziina and end up with two payment intents for one booking.
-    const { data: claimed } = await supabase
+    const { data: claimed, error: claimErr } = await supabase
       .from("appointments")
       .update({ ziina_claimed_at: new Date().toISOString() })
       .eq("id", booking.id)
@@ -334,17 +355,28 @@ async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
       .single();
 
     if (!claimed) {
-      // Lost the claim — another request is creating the intent right
-      // now. Poll briefly for it to finish rather than creating a
-      // duplicate.
+      // Lost the claim — either a genuinely concurrent request is
+      // creating the intent right now, or (bug scenario) a prior
+      // attempt claimed it and then failed without releasing the
+      // claim. Poll briefly for the in-flight case rather than
+      // creating a duplicate.
+      console.warn(
+        `[bookings] lost ziina claim for booking ${booking.id} (${bookingRef})` +
+          (claimErr ? ` — claim update error: ${JSON.stringify(claimErr)}` : " — already claimed by another request"),
+        { idempotencyKey: idempotency_key ?? null, bookingStatus: booking.status }
+      );
+
       let existing: Appointment | null = null;
       for (let i = 0; i < 5; i++) {
         await new Promise((resolve) => setTimeout(resolve, 300));
-        const { data } = await supabase
+        const { data, error: pollErr } = await supabase
           .from("appointments")
           .select()
           .eq("id", booking.id)
           .single();
+        if (pollErr) {
+          console.error(`[bookings] poll error for booking ${booking.id}:`, pollErr);
+        }
         if (data?.ziina_redirect_url) {
           existing = data as Appointment;
           break;
@@ -352,6 +384,12 @@ async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
       }
 
       if (!existing) {
+        console.error(
+          `[bookings] gave up waiting for Ziina redirect on booking ${booking.id} (${bookingRef}) ` +
+            `after 1.5s poll — claim never completed. Booking status: ${booking.status}, ` +
+            `ziina_claimed_at was already set with no ziina_redirect_url — likely a prior attempt ` +
+            `failed without releasing its claim.`
+        );
         return NextResponse.json(
           { error: "Payment gateway error. Please try again." },
           { status: 502 }
@@ -394,10 +432,14 @@ async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
         err
       );
 
-      // Cancel the hold so the slot is released
+      // Cancel the hold so the slot is released, and clear the claim so
+      // a retry with the same idempotency_key can actually attempt
+      // Ziina again instead of being stuck forever in the "lost the
+      // claim" branch above (which would otherwise poll for a
+      // ziina_redirect_url that will now never arrive).
       const { error: cancelErr } = await supabase
         .from("appointments")
-        .update({ status: "cancelled" })
+        .update({ status: "cancelled", ziina_claimed_at: null })
         .eq("id", booking.id);
 
       if (cancelErr) {

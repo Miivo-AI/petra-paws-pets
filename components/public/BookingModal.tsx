@@ -322,11 +322,15 @@ export default function BookingModal() {
         setSubmitError(data.error ?? "Failed to create booking. Please try again.");
         setSubmittingMethod(null);
         if (res.status === 409) {
-          // Someone else took the slot between selection and submit —
-          // send them back to re-pick a time rather than letting them
-          // retry into the same conflict.
+          // Either someone else took the slot between selection and
+          // submit, or the server refused to reuse a dead (cancelled)
+          // booking row matched by idempotency_key. Either way, send
+          // them back to re-pick a time with a fresh idempotency key —
+          // otherwise a resubmit reuses the same key and the server
+          // returns the same conflicting/dead row again, forever.
           setStartTime("");
           setStep(2);
+          setIdempotencyKey(crypto.randomUUID());
         }
         return;
       }
