@@ -21,9 +21,10 @@ const SLIDES = [
 ];
 
 const SLIDE_DURATION_MS = 6000;
+const INITIAL_SLIDE = 1; // hero-2.png
 
 export default function Hero() {
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(INITIAL_SLIDE);
   const openBooking = useBookingModalStore((s) => s.open);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function Hero() {
           src={slide.src}
           alt={slide.alt}
           fill
-          priority={i === 0}
+          priority={i === INITIAL_SLIDE}
           className={`object-cover object-center transition-opacity duration-1000 ease-in-out ${
             i === current ? "opacity-100" : "opacity-0"
           }`}

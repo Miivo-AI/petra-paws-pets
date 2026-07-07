@@ -33,9 +33,8 @@ all require it.
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase project — public client (RLS-scoped) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only admin client — bypasses RLS, used for confirm/lookup/travel-cache |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only admin client — bypasses RLS, used for confirm/lookup/zone reads |
 | `ZIINA_API_KEY` / `ZIINA_API_URL` | Online payment intents + verification |
-| `GOOGLE_MAPS_API_KEY` | Drive-time between zones for the availability engine (falls back to a fixed estimate if unset) |
 | `RESEND_API_KEY` / `EMAIL_FROM` / `OWNER_EMAIL` | Transactional email (customer confirmation + owner alert) |
 | `NEXT_PUBLIC_SITE_URL` | Used to build redirect/callback URLs (Ziina, magic links) |
 
@@ -98,7 +97,8 @@ supabase/migrations/             SQL migrations (source of truth for schema)
    that overlap a confirmed booking, a live payment hold, or an admin
    blackout, and enforces **travel buffers** so two jobs are never scheduled
    closer together than the drive time between their zones (via
-   [`travelTime`](lib/booking/travel.ts), cached in `travel_time_cache`).
+   [`travelTime`](lib/booking/travel.ts), estimated from zone centroid
+   distance — no external API required).
 3. **Submit** — `POST /api/bookings` re-validates the slot server-side
    (never trusts the client), looks up the price from the
    `(pet_type, service_id, size)` matrix, computes VAT, and creates the

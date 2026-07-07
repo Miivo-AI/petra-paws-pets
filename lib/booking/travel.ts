@@ -5,47 +5,50 @@
  * All availability logic calls this function; swap internals freely.
  *
  * Strategy:
- *   1. Check travel_time_cache table — return cached value if present.
- *   2. Call Google Maps Distance Matrix API using zone centroids.
- *   3. Add SETUP_BUFFER_MINUTES (parking + van setup).
- *   4. Persist result to cache.
+ *   1. Fetch zone centroids from service_zones.
+ *   2. Compute straight-line (haversine) distance between centroids.
+ *   3. Apply ROUTE_FACTOR to approximate real road distance, then convert
+ *      to minutes at AVG_SPEED_KMH.
+ *   4. Add SETUP_BUFFER_MINUTES (parking + van setup).
  *
- * Fallback: if GOOGLE_MAPS_API_KEY is not set, returns FALLBACK_MINUTES so
- * the availability engine still works during development.
+ * No external API/key required — Dubai zones are close enough together
+ * that this estimate is accurate enough for scheduling buffers.
  */
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { SETUP_BUFFER_MINUTES } from "@/lib/types";
 
-const FALLBACK_MINUTES = 25; // used when Maps API is not configured
+const FALLBACK_MINUTES = 25; // used if zone centroids can't be found
+
+const AVG_SPEED_KMH = 30; // conservative city-traffic estimate
+const ROUTE_FACTOR = 1.3; // roads aren't straight lines
+const EARTH_RADIUS_KM = 6371;
 
 interface ZoneCoordinates {
   lat: number;
   lng: number;
 }
 
-async function fetchFromMapsAPI(
+function haversineKm(a: ZoneCoordinates, b: ZoneCoordinates): number {
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
+}
+
+function estimateDriveMinutes(
   origin: ZoneCoordinates,
   destination: ZoneCoordinates
-): Promise<number> {
-  const key = process.env.GOOGLE_MAPS_API_KEY;
-  if (!key) return FALLBACK_MINUTES;
-
-  const url =
-    `https://maps.googleapis.com/maps/api/distancematrix/json` +
-    `?origins=${origin.lat},${origin.lng}` +
-    `&destinations=${destination.lat},${destination.lng}` +
-    `&mode=driving&key=${key}`;
-
-  const res = await fetch(url, { next: { revalidate: 3600 } });
-  if (!res.ok) return FALLBACK_MINUTES;
-
-  const json = await res.json();
-  const element = json?.rows?.[0]?.elements?.[0];
-  if (element?.status !== "OK") return FALLBACK_MINUTES;
-
-  const driveSeconds: number = element.duration.value;
-  return Math.ceil(driveSeconds / 60);
+): number {
+  const straightLineKm = haversineKm(origin, destination);
+  const roadKm = straightLineKm * ROUTE_FACTOR;
+  return Math.ceil((roadKm / AVG_SPEED_KMH) * 60);
 }
 
 export async function travelTime(
@@ -56,19 +59,6 @@ export async function travelTime(
 
   const supabase = await createAdminClient();
 
-  // 1. Check cache
-  const { data: cached } = await supabase
-    .from("travel_time_cache")
-    .select("travel_minutes")
-    .eq("zone_a_id", fromZoneId)
-    .eq("zone_b_id", toZoneId)
-    .single();
-
-  if (cached) {
-    return cached.travel_minutes;
-  }
-
-  // 2. Fetch zone centroids
   const { data: zones } = await supabase
     .from("service_zones")
     .select("id, centroid_lat, centroid_lng")
@@ -79,18 +69,10 @@ export async function travelTime(
 
   if (!from || !to) return FALLBACK_MINUTES;
 
-  // 3. Call Maps API
-  const driveMinutes = await fetchFromMapsAPI(
+  const driveMinutes = estimateDriveMinutes(
     { lat: from.centroid_lat, lng: from.centroid_lng },
     { lat: to.centroid_lat, lng: to.centroid_lng }
   );
 
-  const total = driveMinutes + SETUP_BUFFER_MINUTES;
-
-  // 4. Cache result (upsert both directions)
-  await supabase.from("travel_time_cache").upsert([
-    { zone_a_id: fromZoneId, zone_b_id: toZoneId, travel_minutes: total },
-  ]);
-
-  return total;
+  return driveMinutes + SETUP_BUFFER_MINUTES;
 }
