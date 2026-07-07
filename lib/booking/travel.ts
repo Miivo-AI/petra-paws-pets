@@ -39,7 +39,11 @@ function haversineKm(a: ZoneCoordinates, b: ZoneCoordinates): number {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
 
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
+  // h is mathematically in [0, 1], but floating-point rounding can push it
+  // slightly outside that range, making asin(sqrt(h)) return NaN.
+  const clampedH = Math.min(1, Math.max(0, h));
+
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(clampedH));
 }
 
 function estimateDriveMinutes(

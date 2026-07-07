@@ -64,6 +64,18 @@ async function createZiinaPayment(params: {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handleBookingRequest(req);
+  } catch (err) {
+    console.error("[bookings] unexpected error creating booking:", err);
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
   let body: CreateBookingRequest;
   try {
     body = await req.json();
@@ -363,19 +375,37 @@ export async function POST(req: NextRequest) {
         failureUrl: `${siteUrl}/book?error=payment_failed&booking_id=${booking.id}`,
       });
 
-      await supabase
+      const { error: saveErr } = await supabase
         .from("appointments")
         .update({ ziina_payment_id: ziina.id, ziina_redirect_url: ziina.redirect_url })
         .eq("id", booking.id);
 
+      if (saveErr) {
+        console.error(
+          `[bookings] failed to save Ziina payment intent for booking ${booking.id} (${bookingRef}):`,
+          saveErr
+        );
+      }
+
       redirectUrl = ziina.redirect_url;
     } catch (err) {
-      console.error("[bookings] Ziina error:", err);
+      console.error(
+        `[bookings] Ziina error for booking ${booking.id} (${bookingRef}):`,
+        err
+      );
+
       // Cancel the hold so the slot is released
-      await supabase
+      const { error: cancelErr } = await supabase
         .from("appointments")
         .update({ status: "cancelled" })
         .eq("id", booking.id);
+
+      if (cancelErr) {
+        console.error(
+          `[bookings] failed to release hold for booking ${booking.id} after Ziina error:`,
+          cancelErr
+        );
+      }
 
       return NextResponse.json(
         { error: "Payment gateway error. Please try again." },
