@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Cat, Check, Dog, Loader2 } from "lucide-react";
@@ -171,6 +171,31 @@ export default function BookingModal() {
     setInitError(null);
     setIdempotencyKey(crypto.randomUUID());
   }, [isOpen]);
+
+  // If the user navigated to Ziina's hosted payment page and then came
+  // back via the browser's back button (or Ziina's own "cancel"/back
+  // control, which commonly just calls history.back() instead of
+  // redirecting to our failureUrl), the page is restored from the
+  // back-forward cache with whatever state was frozen at the moment we
+  // called `window.location.href = redirectUrl` — i.e. submittingMethod
+  // still set, showing an infinite spinner with no way to retry. The
+  // "pageshow" event with persisted=true is the standard signal for
+  // this bfcache restore; nothing else fires when it happens.
+  const submittingMethodRef = useRef(submittingMethod);
+  useEffect(() => {
+    submittingMethodRef.current = submittingMethod;
+  }, [submittingMethod]);
+
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (!event.persisted) return;
+      if (submittingMethodRef.current === null) return;
+      setSubmittingMethod(null);
+      setSubmitError("Payment was cancelled. You can try again.");
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   // Fetch services + zones once when opened
   useEffect(() => {
