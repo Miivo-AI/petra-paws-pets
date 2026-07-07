@@ -74,27 +74,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing payment intent id" }, { status: 400 });
   }
 
-  const supabase = await createAdminClient();
-  const { data: booking } = await supabase
-    .from("appointments")
-    .select("id, status")
-    .eq("ziina_payment_id", paymentId)
-    .maybeSingle();
-
-  if (!booking) {
-    // Not one of ours, or already cleaned up — ack so Ziina stops retrying.
-    return NextResponse.json({ received: true });
-  }
-
-  if (payload.data?.status === "completed") {
-    await confirmBookingIfPaid(booking.id);
-  } else if (payload.data?.status === "failed" && booking.status === "pending_payment") {
-    await supabase
+  try {
+    const supabase = await createAdminClient();
+    const { data: booking, error: lookupErr } = await supabase
       .from("appointments")
-      .update({ status: "cancelled" })
-      .eq("id", booking.id)
-      .eq("status", "pending_payment");
-  }
+      .select("id, status")
+      .eq("ziina_payment_id", paymentId)
+      .maybeSingle();
 
-  return NextResponse.json({ received: true });
+    if (lookupErr) {
+      console.error(`[ziina webhook] booking lookup failed for payment ${paymentId}:`, lookupErr);
+      return NextResponse.json({ error: "Lookup failed" }, { status: 500 });
+    }
+
+    if (!booking) {
+      // Not one of ours, or already cleaned up — ack so Ziina stops retrying.
+      return NextResponse.json({ received: true });
+    }
+
+    if (payload.data?.status === "completed") {
+      await confirmBookingIfPaid(booking.id);
+    } else if (payload.data?.status === "failed" && booking.status === "pending_payment") {
+      const { error: cancelErr } = await supabase
+        .from("appointments")
+        .update({ status: "cancelled" })
+        .eq("id", booking.id)
+        .eq("status", "pending_payment");
+      if (cancelErr) {
+        console.error(`[ziina webhook] failed to cancel booking ${booking.id}:`, cancelErr);
+      }
+    }
+
+    return NextResponse.json({ received: true });
+  } catch (err) {
+    console.error(`[ziina webhook] unexpected error handling payment ${paymentId}:`, err);
+    // Return 500 (not received:true) so Ziina retries delivery.
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
 }

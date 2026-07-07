@@ -46,8 +46,13 @@ export async function GET(req: NextRequest) {
 
   const results = await Promise.all(
     (pending ?? []).map(async (b) => {
-      const result = await confirmBookingIfPaid(b.id);
-      return { id: b.id, outcome: result.outcome };
+      try {
+        const result = await confirmBookingIfPaid(b.id);
+        return { id: b.id, outcome: result.outcome };
+      } catch (err) {
+        console.error(`[reconcile-bookings] failed to reconcile booking ${b.id}:`, err);
+        return { id: b.id, outcome: "error" as const };
+      }
     })
   );
 
