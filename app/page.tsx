@@ -9,6 +9,7 @@ import Gallery from "@/components/public/Gallery";
 import FAQ from "@/components/public/FAQ";
 import CTASection from "@/components/public/CTASection";
 import Footer from "@/components/public/Footer";
+import ScrollReveal from "@/components/public/ScrollReveal";
 
 export const revalidate = 60;
 
@@ -49,14 +50,30 @@ export default async function HomePage() {
     <div className="min-h-screen">
       <Navbar />
       <Hero />
-      <TrustBar />
-      <ServicesSection services={servicesWithPrices} />
-      <HowItWorks />
-      <Testimonials />
-      <Gallery />
-      <FAQ />
-      <CTASection />
-      <Footer />
+      <ScrollReveal>
+        <TrustBar />
+      </ScrollReveal>
+      <ScrollReveal>
+        <ServicesSection services={servicesWithPrices} />
+      </ScrollReveal>
+      <ScrollReveal>
+        <HowItWorks />
+      </ScrollReveal>
+      <ScrollReveal>
+        <Testimonials />
+      </ScrollReveal>
+      <ScrollReveal>
+        <Gallery />
+      </ScrollReveal>
+      <ScrollReveal>
+        <FAQ />
+      </ScrollReveal>
+      <ScrollReveal>
+        <CTASection />
+      </ScrollReveal>
+      <ScrollReveal>
+        <Footer />
+      </ScrollReveal>
     </div>
   );
 }
