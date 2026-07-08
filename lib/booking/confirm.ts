@@ -13,6 +13,7 @@
  * re-verifies against the Ziina API before confirming.
  */
 
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendBookingConfirmation, sendOwnerBookingAlert } from "@/lib/email";
 import type { Appointment, Service, ServiceZone } from "@/lib/types";
@@ -123,18 +124,26 @@ export async function confirmBookingIfPaid(bookingId: string): Promise<ConfirmRe
     }
 
     if (confirmed) {
-      Promise.all([
-        sendBookingConfirmation(
-          confirmed as Appointment,
-          confirmed.service as Pick<Service, "name">,
-          confirmed.zone as Pick<ServiceZone, "name">
-        ),
-        sendOwnerBookingAlert(
-          confirmed as Appointment,
-          confirmed.service as Pick<Service, "name">,
-          confirmed.zone as Pick<ServiceZone, "name">
-        ),
-      ]).catch((err) => console.error(`[confirm] email error for booking ${bookingId}:`, err));
+      // after() rather than a bare fire-and-forget Promise.all — on
+      // Vercel's serverless runtime the function can be frozen the
+      // instant the caller (redirect/webhook/cron route) sends its
+      // response, silently killing an in-flight Resend call with no
+      // error ever logged. after() keeps the instance alive until this
+      // settles, without delaying the caller's response.
+      after(() =>
+        Promise.all([
+          sendBookingConfirmation(
+            confirmed as Appointment,
+            confirmed.service as Pick<Service, "name">,
+            confirmed.zone as Pick<ServiceZone, "name">
+          ),
+          sendOwnerBookingAlert(
+            confirmed as Appointment,
+            confirmed.service as Pick<Service, "name">,
+            confirmed.zone as Pick<ServiceZone, "name">
+          ),
+        ]).catch((err) => console.error(`[confirm] email error for booking ${bookingId}:`, err))
+      );
       return { outcome: "confirmed", lookupToken: confirmed.lookup_token };
     }
 

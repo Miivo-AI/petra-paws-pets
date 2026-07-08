@@ -10,7 +10,7 @@
  *  6. Return { bookingId, redirectUrl }.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { validateSlot } from "@/lib/booking/availability";
 import {
@@ -329,18 +329,25 @@ async function handleBookingRequest(req: NextRequest): Promise<NextResponse> {
       .single();
 
     if (claimed) {
-      Promise.all([
-        sendBookingConfirmation(
-          booking as Appointment,
-          service as Pick<Service, "name">,
-          zone as Pick<ServiceZone, "name">
-        ),
-        sendOwnerBookingAlert(
-          booking as Appointment,
-          service as Pick<Service, "name">,
-          zone as Pick<ServiceZone, "name">
-        ),
-      ]).catch((err) => console.error("[bookings] email error:", err));
+      // after() (not a bare fire-and-forget Promise.all) — on Vercel's
+      // serverless runtime, the function can be frozen the instant the
+      // response below is sent, silently killing an in-flight Resend
+      // API call with no error ever logged. after() keeps the instance
+      // alive until this settles, without delaying the client response.
+      after(() =>
+        Promise.all([
+          sendBookingConfirmation(
+            booking as Appointment,
+            service as Pick<Service, "name">,
+            zone as Pick<ServiceZone, "name">
+          ),
+          sendOwnerBookingAlert(
+            booking as Appointment,
+            service as Pick<Service, "name">,
+            zone as Pick<ServiceZone, "name">
+          ),
+        ]).catch((err) => console.error("[bookings] email error:", err))
+      );
     }
 
     return NextResponse.json({
