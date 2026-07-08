@@ -170,6 +170,7 @@ export default function BookingModal() {
     setBookingResult(null);
     setInitError(null);
     setIdempotencyKey(crypto.randomUUID());
+    pendingBookingRef.current = null;
   }, [isOpen]);
 
   // If the user navigated to Ziina's hosted payment page and then came
@@ -195,6 +196,53 @@ export default function BookingModal() {
     }
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  // Covers the case where Ziina's hosted page ends up in a *separate*
+  // tab instead of replacing this one (some browsers/extensions force
+  // external payment links into a new tab) — this tab never navigates
+  // away at all, so neither a fresh load nor the bfcache pageshow above
+  // ever fires, and it's left spinning forever with no signal that
+  // payment finished elsewhere. Set right before we hand off to Ziina;
+  // cleared once we act on it or the modal resets.
+  const pendingBookingRef = useRef<{ reference: string; email: string } | null>(null);
+
+  useEffect(() => {
+    async function checkPendingBooking() {
+      if (document.visibilityState !== "visible") return;
+      if (submittingMethodRef.current === null) return;
+      const pending = pendingBookingRef.current;
+      if (!pending) return;
+
+      try {
+        const res = await fetch(
+          `/api/bookings/lookup?ref=${encodeURIComponent(pending.reference)}&email=${encodeURIComponent(pending.email)}`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.status === "confirmed") {
+          pendingBookingRef.current = null;
+          window.location.href = `/bookings/${data.lookup_token}`;
+        } else if (data.status === "cancelled") {
+          pendingBookingRef.current = null;
+          setSubmittingMethod(null);
+          setSubmitError("Payment was cancelled. You can try again.");
+        }
+        // Still pending_payment — they may not have finished on the
+        // other tab yet. Leave the spinner; the next focus/visibility
+        // change will check again.
+      } catch {
+        // Network hiccup — next visibility change retries.
+      }
+    }
+
+    document.addEventListener("visibilitychange", checkPendingBooking);
+    window.addEventListener("focus", checkPendingBooking);
+    return () => {
+      document.removeEventListener("visibilitychange", checkPendingBooking);
+      window.removeEventListener("focus", checkPendingBooking);
+    };
   }, []);
 
   // Fetch services + zones once when opened
@@ -361,6 +409,13 @@ export default function BookingModal() {
       }
 
       if (method === "online") {
+        // Remember this attempt so that if Ziina's hosted page ends up
+        // in a separate tab (browser/extension behavior, not something
+        // we control) rather than replacing this one, this tab isn't
+        // left permanently spinning — see the visibilitychange handler
+        // below, which polls for the outcome once this tab is looked
+        // at again instead of relying on a same-tab redirect back.
+        pendingBookingRef.current = { reference: data.bookingReference, email };
         window.location.href = data.redirectUrl;
         return;
       }
