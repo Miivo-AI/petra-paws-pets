@@ -64,7 +64,10 @@ export default function AppointmentsManager({
       a.customer_email.toLowerCase().includes(q) ||
       a.booking_reference.toLowerCase().includes(q);
     const matchesStatus =
-      statusFilter === "all" || a.status === statusFilter;
+      statusFilter === "all" ||
+      (statusFilter === "pending_payment"
+        ? a.status === "pending_payment" || a.payment_status === "unpaid"
+        : a.status === statusFilter);
     return matchesSearch && matchesStatus;
   });
 
