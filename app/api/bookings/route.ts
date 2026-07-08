@@ -24,6 +24,20 @@ import { HOLD_TTL_MINUTES } from "@/lib/types";
 
 const ZIINA_API_URL = process.env.ZIINA_API_URL ?? "https://api-v2.ziina.com/api";
 const ZIINA_API_KEY = process.env.ZIINA_API_KEY;
+// Server-only toggle (docs.ziina.com/api-reference/payment-intent/create) —
+// creates a test payment_intent that accepts Ziina's test cards
+// (docs.ziina.com/test-cards) and never actually charges anyone. Never
+// exposed to the client; flip via env var only, and never enable it in
+// production.
+const ZIINA_TEST_MODE = process.env.ZIINA_TEST_MODE === "true";
+if (ZIINA_TEST_MODE) {
+  // Loud and repeated on purpose — this must never stay on for real
+  // customers. Logs on every cold start so it can't go unnoticed in
+  // Vercel's function logs.
+  console.warn(
+    "[bookings] ZIINA_TEST_MODE is enabled — all online payments are test payments (no real charges). Do not leave this on in production."
+  );
+}
 
 async function createZiinaPayment(params: {
   amount: number; // in fils / smallest currency unit (AED × 100)
@@ -52,6 +66,7 @@ async function createZiinaPayment(params: {
       success_url: params.successUrl,
       failure_url: params.failureUrl,
       cancel_url: params.failureUrl,
+      ...(ZIINA_TEST_MODE ? { test: true } : {}),
     }),
   });
 
