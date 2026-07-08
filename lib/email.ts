@@ -14,6 +14,16 @@ const FROM = process.env.EMAIL_FROM ?? "noreply@petrapaws.com";
 const OWNER = process.env.OWNER_EMAIL ?? "";
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://petrapaws.com";
 
+if (FROM.includes("@resend.dev")) {
+  // resend.dev is Resend's sandbox sending address — it can only
+  // deliver to the email address the Resend account itself was
+  // registered with, never to real customers. Verify a real domain in
+  // the Resend dashboard and point EMAIL_FROM at it instead.
+  console.warn(
+    `[email] EMAIL_FROM ("${FROM}") is using Resend's sandbox domain (resend.dev) — customer confirmation emails will silently fail to deliver to anyone but the Resend account's own registered address. Verify a real domain at resend.com/domains and update EMAIL_FROM.`
+  );
+}
+
 function formatCurrency(n: number) {
   return `AED ${n.toFixed(2)}`;
 }
@@ -28,7 +38,7 @@ export async function sendBookingConfirmation(
   const statusUrl = `${SITE}/bookings/${appt.lookup_token}`;
   const isPayOnArrival = appt.payment_method === "pay_on_arrival";
 
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM,
     to: appt.customer_email,
     subject: `Booking Confirmed — ${appt.booking_reference} | Petra Paws`,
@@ -58,6 +68,13 @@ export async function sendBookingConfirmation(
       <p>— The Petra Paws Team</p>
     `,
   });
+
+  if (error) {
+    // resend's SDK resolves (doesn't throw) on API-level failures — a
+    // caller doing `.catch()` on this would never see this without an
+    // explicit throw here.
+    throw new Error(`Resend error sending confirmation to ${appt.customer_email}: ${JSON.stringify(error)}`);
+  }
 }
 
 // ── Owner alert email ────────────────────────────────────────
@@ -71,7 +88,7 @@ export async function sendOwnerBookingAlert(
 
   const isPayOnArrival = appt.payment_method === "pay_on_arrival";
 
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM,
     to: OWNER,
     subject: `New Booking — ${appt.booking_reference} (${appt.date} ${appt.start_time})${isPayOnArrival ? " — COLLECT CASH" : ""}`,
@@ -95,4 +112,8 @@ export async function sendOwnerBookingAlert(
       </table>
     `,
   });
+
+  if (error) {
+    throw new Error(`Resend error sending owner alert for ${appt.booking_reference}: ${JSON.stringify(error)}`);
+  }
 }

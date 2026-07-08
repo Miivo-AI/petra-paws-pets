@@ -496,7 +496,7 @@ export default function BookingModal() {
                 payment on arrival.
               </div>
               <Button asChild className="w-full bg-petra-gold hover:bg-petra-gold-light">
-                <Link href={bookingResult.redirectUrl}>View My Booking</Link>
+                <Link href={bookingResult.redirectUrl} onClick={close}>View My Booking</Link>
               </Button>
               <Button variant="outline" className="w-full" onClick={close}>
                 Close
