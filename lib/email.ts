@@ -41,6 +41,9 @@ export async function sendBookingConfirmation(
   const { error } = await getResend().emails.send({
     from: FROM,
     to: appt.customer_email,
+    // there's no real mailbox at the sending domain — route replies to
+    // the owner's actual inbox instead of letting them vanish.
+    replyTo: OWNER || undefined,
     subject: `Booking Confirmed — ${appt.booking_reference} | Petra Paws`,
     html: `
       <h2>Your booking is confirmed!</h2>
