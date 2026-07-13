@@ -43,26 +43,19 @@ const REVIEWS = [
 
 export default function Testimonials() {
   const [current, setCurrent] = useState(0);
-  const [fading, setFading] = useState(false);
 
   const goTo = useCallback((index: number) => {
-    setFading(true);
-    setTimeout(() => {
-      setCurrent(index);
-      setFading(false);
-    }, 250);
+    setCurrent(index);
   }, []);
 
   const next = useCallback(() => {
-    goTo((current + 1) % REVIEWS.length);
-  }, [current, goTo]);
+    setCurrent((c) => (c + 1) % REVIEWS.length);
+  }, []);
 
   useEffect(() => {
     const t = setInterval(next, 5000);
     return () => clearInterval(t);
   }, [next]);
-
-  const review = REVIEWS[current];
 
   return (
     <section id="reviews" className="relative bg-white py-20 lg:py-28 overflow-hidden scroll-mt-16">
@@ -88,50 +81,58 @@ export default function Testimonials() {
           Loved Across Dubai
         </h2>
 
-        {/* Review card — left photo + right text */}
-        <div
-          className="flex flex-col sm:flex-row items-center gap-10 sm:gap-14 max-w-3xl mx-auto transition-opacity duration-250"
-          style={{ opacity: fading ? 0 : 1 }}
-        >
-          {/* Circle photo */}
+        {/* Review card — sliding track */}
+        <div className="overflow-hidden">
           <div
-            className="relative flex-shrink-0 rounded-full overflow-hidden ring-4 ring-white shadow-lg"
-            style={{ width: 220, height: 220 }}
+            className="flex transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${current * 100}%)` }}
           >
-            <Image
-              src={review.image}
-              alt={review.name}
-              fill
-              className="object-cover object-center"
-              sizes="220px"
-            />
-          </div>
+            {REVIEWS.map((review, i) => (
+              <div key={i} className="w-full flex-shrink-0 px-6" aria-hidden={i !== current}>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-14 max-w-3xl mx-auto">
+                  {/* Circle photo */}
+                  <div
+                    className="relative flex-shrink-0 rounded-full overflow-hidden ring-4 ring-white shadow-lg"
+                    style={{ width: 220, height: 220 }}
+                  >
+                    <Image
+                      src={review.image}
+                      alt={review.name}
+                      fill
+                      className="object-cover object-center"
+                      sizes="220px"
+                    />
+                  </div>
 
-          {/* Text */}
-          <div className="flex-1 min-w-0 text-center sm:text-left">
-            {/* Name */}
-            <p className="font-serif text-xl font-bold text-petra-green">
-              {review.name}
-            </p>
+                  {/* Text */}
+                  <div className="flex-1 min-w-0 text-center sm:text-left">
+                    {/* Name */}
+                    <p className="font-serif text-xl font-bold text-petra-green">
+                      {review.name}
+                    </p>
 
-            {/* Pet info */}
-            <p className="mt-1 text-sm text-petra-green/55">
-              {review.pet}
-            </p>
+                    {/* Pet info */}
+                    <p className="mt-1 text-sm text-petra-green/55">
+                      {review.pet}
+                    </p>
 
-            {/* Hearts */}
-            <div className="flex items-center justify-center sm:justify-start gap-1 mt-3">
-              {Array.from({ length: review.rating }).map((_, i) => (
-                <svg key={i} width="20" height="20" viewBox="0 0 20 20" fill="#E8414A">
-                  <path d="M10 17.5S2 12 2 6.5A4 4 0 0 1 10 4.5 4 4 0 0 1 18 6.5C18 12 10 17.5 10 17.5Z" />
-                </svg>
-              ))}
-            </div>
+                    {/* Hearts */}
+                    <div className="flex items-center justify-center sm:justify-start gap-1 mt-3">
+                      {Array.from({ length: review.rating }).map((_, h) => (
+                        <svg key={h} width="20" height="20" viewBox="0 0 20 20" fill="#E8414A">
+                          <path d="M10 17.5S2 12 2 6.5A4 4 0 0 1 10 4.5 4 4 0 0 1 18 6.5C18 12 10 17.5 10 17.5Z" />
+                        </svg>
+                      ))}
+                    </div>
 
-            {/* Quote */}
-            <p className="mt-4 text-sm leading-relaxed text-petra-green/70 max-w-sm mx-auto sm:mx-0">
-              &ldquo;{review.text}&rdquo;
-            </p>
+                    {/* Quote */}
+                    <p className="mt-4 text-sm leading-relaxed text-petra-green/70 max-w-sm mx-auto sm:mx-0">
+                      &ldquo;{review.text}&rdquo;
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
