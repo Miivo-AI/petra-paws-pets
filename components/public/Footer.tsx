@@ -75,6 +75,7 @@ export default function Footer() {
             <ul className="space-y-0.5 text-xs text-white/60 leading-relaxed">
               <li>Dubai Office:</li>
               <li>Nadd Al Sheba 1, Dubai, UAE</li>
+              <li>Open 9:00 AM – 5:00 PM</li>
               <li>Phone: +971 54 199 6900</li>
               <li>Email: petrapawspet@gmail.com</li>
             </ul>
