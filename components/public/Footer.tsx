@@ -74,9 +74,9 @@ export default function Footer() {
             </p>
             <ul className="space-y-0.5 text-xs text-white/60 leading-relaxed">
               <li>Dubai Office:</li>
-              <li>123 Business Bay, Dubai, UAE</li>
-              <li>Phone: +971 4 123 4567</li>
-              <li>Email: contact@ourcompany.ae</li>
+              <li>Nadd Al Sheba 1, Dubai, UAE</li>
+              <li>Phone: +971 54 199 6900</li>
+              <li>Email: petrapawspet@gmail.com</li>
             </ul>
           </div>
 
@@ -87,7 +87,7 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="container-petra py-4">
           <p className="text-[11px] text-white/35">
-            © {new Date().getFullYear()} Privo Cares. All rights reserved.
+            © {new Date().getFullYear()} Petra Paws. All rights reserved.
           </p>
         </div>
       </div>
