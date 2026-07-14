@@ -74,10 +74,10 @@ export default function Footer() {
             </p>
             <ul className="space-y-0.5 text-xs text-white/60 leading-relaxed">
               <li>Dubai Office:</li>
-              <li>Nadd Al Sheba 1, Dubai, UAE</li>
-              <li>Open 9:00 AM – 5:00 PM</li>
+              <li>Nadd Al Sheba 1, Dubai, UAE</li>    
               <li>Phone: +971 54 199 6900</li>
               <li>Email: petrapawspet@gmail.com</li>
+              <li>Open: 9:00 AM – 5:00 PM</li>
             </ul>
           </div>
 
@@ -88,7 +88,7 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="container-petra py-4">
           <p className="text-[11px] text-white/35">
-            © {new Date().getFullYear()} Petra Paws. All rights reserved.
+            © {new Date().getFullYear()} Petra Paws Pets. All rights reserved.
           </p>
         </div>
       </div>
