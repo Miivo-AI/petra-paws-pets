@@ -90,6 +90,15 @@ export default function Navbar() {
 
           {/* Mobile CTA + hamburger */}
           <div className="flex md:hidden items-center gap-3">
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Follow Petra Paws Pets on Instagram"
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              <InstagramIcon className="h-5 w-5" />
+            </a>
             <button
               onClick={openBooking}
               className="inline-flex items-center gap-2 rounded-full bg-petra-gold px-5 py-2 text-sm font-semibold text-white hover:bg-petra-gold-light transition-colors"
