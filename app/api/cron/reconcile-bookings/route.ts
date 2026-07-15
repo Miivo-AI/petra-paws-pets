@@ -12,8 +12,9 @@
  * deliver — otherwise a charged customer with no confirmed booking
  * would go unnoticed until they complained.
  *
- * Intended to be hit every few minutes by an external scheduler
- * (Vercel Cron, cron-job.org, etc), authenticated with CRON_SECRET.
+ * Intended to be hit every few minutes by an external scheduler,
+ * authenticated with CRON_SECRET. Vercel Cron is disabled (Hobby plan
+ * caps it at once/day) — cron-job.org is the primary trigger for this.
  */
 
 import { NextRequest, NextResponse } from "next/server";
