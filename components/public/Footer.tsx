@@ -54,9 +54,9 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow Petra Paws Pets on Instagram"
-                className="mt-3 inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors"
+                className="mt-2 inline-flex items-center justify-center text-white/70 hover:text-white transition-colors"
               >
-                <InstagramIcon className="h-4 w-4" />
+                <InstagramIcon className="h-5 w-5" />
               </a>
             </div>
           </div>
