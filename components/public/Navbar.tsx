@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import InstagramIcon from "@/components/icons/InstagramIcon";
 import { useBookingModalStore } from "@/lib/store/booking-modal";
+
+const INSTAGRAM_URL = "https://www.instagram.com/petrapawspets?igsh=MXdoZGhtaWtzaHZ1Yg==";
 
 const NAV_LINKS = [
   { label: "How it works", href: "#how-it-works" },
@@ -67,7 +70,16 @@ export default function Navbar() {
           </nav>
 
           {/* CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-4">
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Follow Petra Paws Pets on Instagram"
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              <InstagramIcon className="h-5 w-5" />
+            </a>
             <button
               onClick={openBooking}
               className="inline-flex items-center gap-2 rounded-full bg-petra-gold px-5 py-2 text-sm font-semibold text-white hover:bg-petra-gold-light transition-colors"

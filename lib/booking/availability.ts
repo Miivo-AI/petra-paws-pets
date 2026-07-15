@@ -4,10 +4,11 @@
  * Server-side only. The client never computes or trusts slot availability.
  *
  * Algorithm:
- *   1. Reject Mondays and full-day blackouts.
- *   2. Build working window 10:00–17:00.
+ *   1. Reject past dates, Mondays, and full-day blackouts.
+ *   2. Build working window 9:00–17:00.
  *   3. Fetch confirmed + non-expired pending_payment bookings + partial blackouts.
- *   4. Generate candidate start times on 5-minute grid.
+ *   4. Generate candidate start times on 5-minute grid, dropping any that have
+ *      already passed if the date is today (Asia/Dubai wall-clock time).
  *   5. For each candidate T at location L, keep it only if:
  *      a. T + duration ≤ 17:00  (fits before close)
  *      b. No overlap with any occupied interval
@@ -39,6 +40,28 @@ function toTimeStr(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+// The business operates in Dubai; "today" and "now" must reflect Dubai wall
+// clock regardless of where the server process itself is running (Vercel
+// defaults to UTC). UAE has no DST, but we still go through Intl rather than
+// a hardcoded +4h offset so this doesn't silently drift if that ever changes.
+export function getDubaiNow(): { date: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: Number(get("hour")) * 60 + Number(get("minute")),
+  };
+}
+
 // ── Types ────────────────────────────────────────────────────
 
 interface OccupiedInterval {
@@ -56,7 +79,9 @@ export async function getAvailableSlots(params: {
 }): Promise<string[]> {
   const { date, serviceId, zoneId } = params;
 
-  // 1. Reject Mondays (getDay() returns 1 for Monday in UTC; parse as UTC)
+  // 1. Reject past dates and Mondays (getDay() returns 1 for Monday in UTC; parse as UTC)
+  const { date: todayDubai, minutes: nowMinutesDubai } = getDubaiNow();
+  if (date < todayDubai) return [];
   const [year, month, day] = date.split("-").map(Number);
   const jsDate = new Date(Date.UTC(year, month - 1, day));
   if (jsDate.getUTCDay() === 1) return [];
@@ -152,6 +177,9 @@ export async function getAvailableSlots(params: {
     t <= latestStart;
     t += SLOT_GRID_MINUTES
   ) {
+    // Same-day booking: drop any slot that has already started/passed.
+    if (date === todayDubai && t <= nowMinutesDubai) continue;
+
     const tEnd = t + duration;
 
     // a. Overlap check

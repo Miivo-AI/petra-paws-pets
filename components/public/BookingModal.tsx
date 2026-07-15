@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Cat, Check, Dog, Loader2 } from "lucide-react";
+import { Calendar, Cat, Check, Clock, Dog, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CalendarPanel } from "@/components/ui/calendar-panel";
+import { TimeSlotPanel } from "@/components/ui/time-slot-panel";
 import { useBookingModalStore } from "@/lib/store/booking-modal";
 import { lookupPrice, calculateTotals } from "@/lib/booking/pricing";
-import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import type {
   PaymentMethod,
   PetSize,
@@ -122,6 +124,26 @@ export default function BookingModal() {
   const [slots, setSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  const [dateOpen, setDateOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
+  // One ref around the trigger row *and* both panels — a panel isn't
+  // nested inside its trigger's own div, so a click-outside check scoped
+  // to just the trigger would see clicks inside the (sibling) panel as
+  // "outside" and close it on mousedown before the click handler fires.
+  const dateTimeFieldsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!dateOpen && !timeOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (!dateTimeFieldsRef.current?.contains(e.target as Node)) {
+        setDateOpen(false);
+        setTimeOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [dateOpen, timeOpen]);
+
   // ── Submission ───────────────────────────────────────────────────
   const [submittingMethod, setSubmittingMethod] = useState<PaymentMethod | null>(
     null
@@ -165,6 +187,8 @@ export default function BookingModal() {
     setNotes("");
     setStep2Touched(false);
     setSlots([]);
+    setDateOpen(false);
+    setTimeOpen(false);
     setSubmitError(null);
     setSubmittingMethod(null);
     setBookingResult(null);
@@ -718,58 +742,90 @@ export default function BookingModal() {
                     <FieldError message={step2Touched ? step2Errors.address : undefined} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-petra-green/50">
-                        Preferred Date
-                      </p>
-                      <Input
-                        type="date"
-                        min={today}
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className={fieldClass(
-                          step2Touched || date ? step2Errors.date : undefined
-                        )}
-                      />
-                      <FieldError
-                        message={step2Touched || date ? step2Errors.date : undefined}
-                      />
-                    </div>
-                    <div>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-petra-green/50">
-                        Preferred Time
-                      </p>
-                      <Select
-                        value={startTime}
-                        onValueChange={setStartTime}
-                        disabled={!date || !serviceId || !zoneId || loadingSlots}
-                      >
-                        <SelectTrigger
-                          className={fieldClass(step2Touched ? step2Errors.startTime : undefined)}
+                  <div ref={dateTimeFieldsRef}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-petra-green/50">
+                          Preferred Date
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDateOpen((o) => !o);
+                            setTimeOpen(false);
+                          }}
+                          className={cn(
+                            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                            fieldClass(step2Touched || date ? step2Errors.date : undefined),
+                            !date && "text-muted-foreground"
+                          )}
                         >
-                          <SelectValue
-                            placeholder={
-                              loadingSlots
-                                ? "Loading…"
+                          <span className="truncate">
+                            {date ? formatDate(date) : "Select date"}
+                          </span>
+                          <Calendar className="h-4 w-4 shrink-0 text-petra-green/40" />
+                        </button>
+                        <FieldError
+                          message={step2Touched || date ? step2Errors.date : undefined}
+                        />
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-petra-green/50">
+                          Preferred Time
+                        </p>
+                        <button
+                          type="button"
+                          disabled={!date || !serviceId || !zoneId || loadingSlots}
+                          onClick={() => {
+                            setTimeOpen((o) => !o);
+                            setDateOpen(false);
+                          }}
+                          className={cn(
+                            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                            fieldClass(step2Touched ? step2Errors.startTime : undefined),
+                            !startTime && "text-muted-foreground"
+                          )}
+                        >
+                          <span className="truncate">
+                            {loadingSlots
+                              ? "Loading…"
+                              : startTime
+                                ? formatTime(startTime)
                                 : !date || !serviceId || !zoneId
                                   ? "Pick date & area first"
                                   : slots.length === 0
                                     ? "No times available"
-                                    : "Select a time"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {slots.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {formatTime(t)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FieldError message={step2Touched ? step2Errors.startTime : undefined} />
+                                    : "Select a time"}
+                          </span>
+                          <Clock className="h-4 w-4 shrink-0 text-petra-green/40" />
+                        </button>
+                        <FieldError message={step2Touched ? step2Errors.startTime : undefined} />
+                      </div>
                     </div>
+
+                    {dateOpen && (
+                      <CalendarPanel
+                        value={date}
+                        min={today}
+                        isDateDisabled={(d) => d.getDay() === 1}
+                        onChange={(d) => {
+                          setDate(d);
+                          setDateOpen(false);
+                        }}
+                      />
+                    )}
+
+                    {timeOpen && (
+                      <TimeSlotPanel
+                        value={startTime}
+                        slots={slots}
+                        loading={loadingSlots}
+                        onChange={(t) => {
+                          setStartTime(t);
+                          setTimeOpen(false);
+                        }}
+                      />
+                    )}
                   </div>
 
                   <div>

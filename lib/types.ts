@@ -126,7 +126,7 @@ export interface AvailabilityResponse {
 }
 
 export const VAT_RATE = 0.05;
-export const OPERATING_HOURS = { open: 10 * 60, close: 17 * 60 } as const;
+export const OPERATING_HOURS = { open: 9 * 60, close: 17 * 60 } as const;
 export const SLOT_GRID_MINUTES = 5;
 export const HOLD_TTL_MINUTES = 10;
 export const SETUP_BUFFER_MINUTES = 10;

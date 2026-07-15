@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAvailableSlots } from "@/lib/booking/availability";
+import { getAvailableSlots, getDubaiNow } from "@/lib/booking/availability";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -19,8 +19,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
   }
 
-  // Reject past dates
-  const today = new Date().toISOString().split("T")[0];
+  // Reject past dates (Dubai wall-clock date — see getAvailableSlots)
+  const { date: today } = getDubaiNow();
   if (date < today) {
     return NextResponse.json({ date, available_slots: [] });
   }
