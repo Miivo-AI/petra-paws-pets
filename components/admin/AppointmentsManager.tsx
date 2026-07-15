@@ -165,7 +165,7 @@ export default function AppointmentsManager({
                 <th className="px-4 py-3 font-medium text-muted-foreground">Customer</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Pet</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Service</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Date & Time</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground min-w-[150px]">Date & Time</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Total</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Payment</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
@@ -206,9 +206,9 @@ export default function AppointmentsManager({
                     <td className="px-4 py-3">
                       {(appt.service as { name: string } | null)?.name ?? "—"}
                     </td>
-                    <td className="px-4 py-3">
-                      <p>{formatDate(appt.date)}</p>
-                      <p className="text-xs text-muted-foreground">
+                    <td className="px-4 py-3 min-w-[150px]">
+                      <p className="whitespace-nowrap">{formatDate(appt.date)}</p>
+                      <p className="text-xs text-muted-foreground whitespace-nowrap">
                         {formatTime(appt.start_time)} – {formatTime(appt.end_time)}
                       </p>
                     </td>
@@ -306,7 +306,7 @@ export default function AppointmentsManager({
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Customer

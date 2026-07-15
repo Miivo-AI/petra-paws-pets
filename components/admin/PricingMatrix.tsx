@@ -148,37 +148,39 @@ export default function PricingMatrix({
           Dogs (priced by size)
         </h3>
         <div className="rounded-xl border bg-white overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                  Size
-                </th>
-                {services.map((s) => (
-                  <th
-                    key={s.id}
-                    className="px-4 py-2.5 text-left font-medium text-muted-foreground"
-                  >
-                    {s.name}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                    Size
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {DOG_SIZES.map((size) => (
-                <tr key={size} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-2.5 font-medium capitalize">{SIZE_LABELS[size]}</td>
                   {services.map((s) => (
-                    <td key={s.id} className="px-4 py-2.5">
-                      <Cell
-                        k={{ petType: "dog", serviceId: s.id, size }}
-                      />
-                    </td>
+                    <th
+                      key={s.id}
+                      className="px-4 py-2.5 text-left font-medium text-muted-foreground"
+                    >
+                      {s.name}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {DOG_SIZES.map((size) => (
+                  <tr key={size} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-2.5 font-medium capitalize">{SIZE_LABELS[size]}</td>
+                    {services.map((s) => (
+                      <td key={s.id} className="px-4 py-2.5">
+                        <Cell
+                          k={{ petType: "dog", serviceId: s.id, size }}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -188,33 +190,35 @@ export default function PricingMatrix({
           Cats (flat per service)
         </h3>
         <div className="rounded-xl border bg-white overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                  Pet
-                </th>
-                {services.map((s) => (
-                  <th
-                    key={s.id}
-                    className="px-4 py-2.5 text-left font-medium text-muted-foreground"
-                  >
-                    {s.name}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                    Pet
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="hover:bg-gray-50/50">
-                <td className="px-4 py-2.5 font-medium">Cat</td>
-                {services.map((s) => (
-                  <td key={s.id} className="px-4 py-2.5">
-                    <Cell k={{ petType: "cat", serviceId: s.id, size: null }} />
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+                  {services.map((s) => (
+                    <th
+                      key={s.id}
+                      className="px-4 py-2.5 text-left font-medium text-muted-foreground"
+                    >
+                      {s.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="hover:bg-gray-50/50">
+                  <td className="px-4 py-2.5 font-medium">Cat</td>
+                  {services.map((s) => (
+                    <td key={s.id} className="px-4 py-2.5">
+                      <Cell k={{ petType: "cat", serviceId: s.id, size: null }} />
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

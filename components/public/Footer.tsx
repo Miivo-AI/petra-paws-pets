@@ -1,6 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
+import InstagramIcon from "@/components/icons/InstagramIcon";
 import type { CSSProperties } from "react";
+
+const INSTAGRAM_URL = "https://www.instagram.com/petrapawspets?igsh=MXdoZGhtaWtzaHZ1Yg==";
 
 const NAV_LINKS = [
   { label: "How it works", href: "#how-it-works" },
@@ -46,6 +49,15 @@ export default function Footer() {
               <p className="mt-1 text-xs text-white/55 leading-relaxed max-w-[160px]">
                 Mobile pet grooming that comes to you.
               </p>
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow Petra Paws Pets on Instagram"
+                className="mt-3 inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors"
+              >
+                <InstagramIcon className="h-4 w-4" />
+              </a>
             </div>
           </div>
 
