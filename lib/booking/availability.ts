@@ -10,7 +10,7 @@
  *   4. Generate candidate start times on 5-minute grid, dropping any that have
  *      already passed if the date is today (Asia/Dubai wall-clock time).
  *   5. For each candidate T at location L, keep it only if:
- *      a. T + duration ≤ 17:00  (fits before close)
+ *      a. T ≤ 17:00  (may start until close; the job itself may run past it)
  *      b. No overlap with any occupied interval
  *      c. T ≥ prev.end + travelTime(prev.zone, L)  (travel-in OK)
  *      d. T + duration + travelTime(L, next.zone) ≤ next.start  (travel-out OK)
@@ -97,7 +97,9 @@ export async function getAvailableSlots(params: {
 
   if (!service) return [];
   const duration = service.duration_minutes;
-  const latestStart = OPERATING_HOURS.close - duration;
+  // Appointments may START any time up to 17:00; the job itself may run past
+  // close. Only the start time is bounded by operating hours.
+  const latestStart = OPERATING_HOURS.close;
 
   // 2. Check full-day blackout
   const { data: blackouts } = await supabase
