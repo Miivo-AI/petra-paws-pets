@@ -1,5 +1,7 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
+import { useBookingModalStore } from "@/lib/store/booking-modal";
 
 const STEPS = [
   {
@@ -29,6 +31,8 @@ const STEPS = [
 ];
 
 export default function HowItWorks() {
+  const openBooking = useBookingModalStore((s) => s.open);
+
   return (
     <section id="how-it-works" className="bg-petra-green py-20 lg:py-28 scroll-mt-16">
       <div className="container-petra">
@@ -85,12 +89,12 @@ export default function HowItWorks() {
 
         {/* CTA */}
         <div className="text-center">
-          <Link
-            href="/book"
+          <button
+            onClick={openBooking}
             className="inline-flex items-center gap-2 rounded-full bg-petra-gold px-8 py-3.5 text-sm font-bold text-white hover:opacity-90 transition-opacity shadow-lg"
           >
             Book a Grooming
-          </Link>
+          </button>
         </div>
 
       </div>

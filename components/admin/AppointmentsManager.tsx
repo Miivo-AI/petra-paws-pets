@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Search, Eye, Check, X, Clock, Wallet, CreditCard, Banknote } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +17,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -54,6 +58,10 @@ export default function AppointmentsManager({
     "all"
   );
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<BookingStatus | null>(
+    null
+  );
+  const [confirmDelete, setConfirmDelete] = useState<Appointment | null>(null);
   const supabase = createClient();
 
   const filtered = appointments.filter((a) => {
@@ -73,25 +81,33 @@ export default function AppointmentsManager({
 
   async function updateStatus(id: string, status: BookingStatus) {
     const previous = appointments.find((a) => a.id === id)?.status;
+    if (previous === status) return;
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a))
     );
     if (selectedAppt?.id === id) {
       setSelectedAppt((prev) => (prev ? { ...prev, status } : null));
     }
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("appointments")
       .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error && previous) {
+      .eq("id", id)
+      .select("id");
+    // A row-level-security denial (e.g. an expired admin session) comes back
+    // as a *successful* update of zero rows, not an `error` — so both cases
+    // have to be treated as failure or the optimistic UI update silently
+    // desyncs from the database.
+    if ((error || !data || data.length === 0) && previous) {
       setAppointments((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: previous } : a))
       );
       if (selectedAppt?.id === id) {
         setSelectedAppt((prev) => (prev ? { ...prev, status: previous } : null));
       }
-      alert("Failed to update status. Please try again.");
+      toast.error("Failed to update status. Please try again.");
+      return;
     }
+    toast.success(`Status changed to "${STATUS_CONFIG[status].label}"`);
   }
 
   async function markPaymentStatus(id: string, payment_status: PaymentStatus) {
@@ -102,11 +118,12 @@ export default function AppointmentsManager({
     if (selectedAppt?.id === id) {
       setSelectedAppt((prev) => (prev ? { ...prev, payment_status } : null));
     }
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("appointments")
       .update({ payment_status, updated_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error && previous) {
+      .eq("id", id)
+      .select("id");
+    if ((error || !data || data.length === 0) && previous) {
       setAppointments((prev) =>
         prev.map((a) => (a.id === id ? { ...a, payment_status: previous } : a))
       );
@@ -115,15 +132,41 @@ export default function AppointmentsManager({
           prev ? { ...prev, payment_status: previous } : null
         );
       }
-      alert("Failed to update payment status. Please try again.");
+      toast.error("Failed to update payment status. Please try again.");
+      return;
     }
+    toast.success(
+      payment_status === "paid" ? "Marked as paid" : "Marked as unpaid"
+    );
+  }
+
+  async function applyPendingStatus() {
+    if (!selectedAppt || !pendingStatus) return;
+    await updateStatus(selectedAppt.id, pendingStatus);
+    setPendingStatus(null);
   }
 
   async function deleteAppointment(id: string) {
-    if (!confirm("Delete this appointment permanently?")) return;
+    const target = appointments.find((a) => a.id === id);
+    const snapshot = appointments;
     setAppointments((prev) => prev.filter((a) => a.id !== id));
     setSelectedAppt(null);
-    await supabase.from("appointments").delete().eq("id", id);
+    setConfirmDelete(null);
+    const { data, error } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", id)
+      .select("id");
+    // Same silent-failure shape as updateStatus: RLS denial returns no
+    // `error`, just zero deleted rows, which must be treated as a failure.
+    if (error || !data || data.length === 0) {
+      setAppointments(snapshot);
+      toast.error("Failed to delete appointment. Please try again.");
+      return;
+    }
+    toast.success(
+      `Booking ${target?.booking_reference ?? ""} deleted`.trim()
+    );
   }
 
   return (
@@ -242,7 +285,10 @@ export default function AppointmentsManager({
                           size="icon"
                           className="h-7 w-7"
                           title="View details"
-                          onClick={() => setSelectedAppt(appt)}
+                          onClick={() => {
+                            setSelectedAppt(appt);
+                            setPendingStatus(null);
+                          }}
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
@@ -293,7 +339,12 @@ export default function AppointmentsManager({
       {/* Detail modal */}
       <Dialog
         open={!!selectedAppt}
-        onOpenChange={(open) => !open && setSelectedAppt(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedAppt(null);
+            setPendingStatus(null);
+          }
+        }}
       >
         {selectedAppt && (
           <DialogContent className="max-w-md">
@@ -438,7 +489,7 @@ export default function AppointmentsManager({
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                   Update Status
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {(
                     [
                       "pending_payment",
@@ -450,13 +501,30 @@ export default function AppointmentsManager({
                       key={s}
                       size="sm"
                       variant={
-                        selectedAppt.status === s ? "default" : "outline"
+                        (pendingStatus ?? selectedAppt.status) === s
+                          ? "default"
+                          : "outline"
                       }
-                      onClick={() => updateStatus(selectedAppt.id, s)}
+                      onClick={() =>
+                        setPendingStatus(
+                          s === selectedAppt.status ? null : s
+                        )
+                      }
                     >
                       {STATUS_CONFIG[s].label}
                     </Button>
                   ))}
+                  {pendingStatus && pendingStatus !== selectedAppt.status && (
+                    <Button
+                      size="sm"
+                      className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={applyPendingStatus}
+                      title="Apply status change"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Apply
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -464,7 +532,7 @@ export default function AppointmentsManager({
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => deleteAppointment(selectedAppt.id)}
+                  onClick={() => setConfirmDelete(selectedAppt)}
                 >
                   Delete Appointment
                 </Button>
@@ -473,6 +541,54 @@ export default function AppointmentsManager({
           </DialogContent>
         )}
       </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        {confirmDelete && (
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete appointment?</DialogTitle>
+              <DialogDescription>
+                Booking{" "}
+                <span className="font-mono">
+                  {confirmDelete.booking_reference}
+                </span>{" "}
+                for {confirmDelete.customer_name} will be permanently
+                deleted. This can&apos;t be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => deleteAppointment(confirmDelete.id)}
+              >
+                Delete Appointment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        theme="light"
+        toastClassName="!font-sans"
+      />
     </>
   );
 }
