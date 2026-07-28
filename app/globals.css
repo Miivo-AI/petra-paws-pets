@@ -74,6 +74,21 @@
   animation-play-state: paused;
 }
 
+/* Toast notifications (react-toastify): top-right on desktop, full-width
+   top strip on mobile so status-change confirmations are easy to spot. */
+.Toastify__toast-container {
+  z-index: 100;
+}
+@media (max-width: 640px) {
+  .Toastify__toast-container--top-right {
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 0.5rem;
+  }
+}
+
 @layer utilities {
   .section-pad {
     @apply px-4 sm:px-6 lg:px-8;
