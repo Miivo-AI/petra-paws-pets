@@ -3,6 +3,7 @@ export type PetSize = "small" | "medium" | "large";
 export type BookingStatus = "pending_payment" | "confirmed" | "cancelled";
 export type PaymentMethod = "online" | "pay_on_arrival";
 export type PaymentStatus = "unpaid" | "paid";
+export type BookingSource = "web" | "whatsapp";
 
 export interface Service {
   id: string;
@@ -80,6 +81,7 @@ export interface Appointment {
   idempotency_key: string | null;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
+  source: BookingSource;
 
   created_at: string;
   updated_at: string;

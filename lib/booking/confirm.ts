@@ -15,40 +15,14 @@
 
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { isZiinaPaymentComplete } from "@/lib/booking/ziina";
 import { sendBookingConfirmation, sendOwnerBookingAlert } from "@/lib/email";
+import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
+import { formatBookingConfirmedMessage } from "@/lib/whatsapp/messages";
 import type { Appointment, Service, ServiceZone } from "@/lib/types";
 
-const ZIINA_API_URL = process.env.ZIINA_API_URL ?? "https://api-v2.ziina.com/api";
-const ZIINA_API_KEY = process.env.ZIINA_API_KEY;
-
-export function isZiinaConfigured(): boolean {
-  return Boolean(ZIINA_API_KEY);
-}
-
-/**
- * Ziina payment_intent statuses (per docs.ziina.com/reference/getpaymentintent):
- * requires_payment_instrument | pending | requires_user_action | completed | failed
- * Only "completed" means the money has actually landed.
- */
-export async function isZiinaPaymentComplete(paymentId: string): Promise<boolean> {
-  if (!ZIINA_API_KEY || !paymentId) return false;
-  try {
-    const res = await fetch(`${ZIINA_API_URL}/payment_intent/${paymentId}`, {
-      headers: { Authorization: `Bearer ${ZIINA_API_KEY}` },
-    });
-    if (!res.ok) {
-      console.error(
-        `[confirm] Ziina payment_intent lookup failed for ${paymentId}: ${res.status} ${await res.text()}`
-      );
-      return false;
-    }
-    const data = await res.json();
-    return data?.status === "completed";
-  } catch (err) {
-    console.error(`[confirm] Ziina payment_intent lookup threw for ${paymentId}:`, err);
-    return false;
-  }
-}
+export { isZiinaConfigured } from "@/lib/booking/ziina";
+export { isZiinaPaymentComplete };
 
 export type ConfirmResult =
   | { outcome: "already_confirmed"; lookupToken: string }
@@ -142,6 +116,21 @@ export async function confirmBookingIfPaid(bookingId: string): Promise<ConfirmRe
             confirmed.service as Pick<Service, "name">,
             confirmed.zone as Pick<ServiceZone, "name">
           ),
+          // Online payments booked via the WhatsApp bot only get a Ziina
+          // link in-chat, not a booking confirmation — send that back over
+          // WhatsApp too, since customer_phone is that same conversation's
+          // wa_id for whatsapp-sourced bookings.
+          ...((confirmed as Appointment).source === "whatsapp"
+            ? [
+                sendWhatsAppMessage(
+                  confirmed.customer_phone,
+                  formatBookingConfirmedMessage(
+                    confirmed as Appointment,
+                    confirmed.service?.name ?? "your appointment"
+                  )
+                ),
+              ]
+            : []),
         ]).catch((err) => console.error(`[confirm] email error for booking ${bookingId}:`, err))
       );
       return { outcome: "confirmed", lookupToken: confirmed.lookup_token };

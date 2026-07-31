@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Eye, Check, X, Clock, Wallet, CreditCard, Banknote } from "lucide-react";
+import { Search, Eye, Check, X, Clock, Wallet, CreditCard, Banknote, MessageCircle } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Button } from "@/components/ui/button";
@@ -271,6 +271,11 @@ export default function AppointmentsManager({
                         <Badge variant={appt.payment_status === "paid" ? "success" : "warning"}>
                           {appt.payment_status === "paid" ? "Paid" : "Unpaid"}
                         </Badge>
+                        {appt.source === "whatsapp" && (
+                          <span title="Booked via WhatsApp">
+                            <MessageCircle className="h-3.5 w-3.5 text-green-600" />
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
