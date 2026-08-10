@@ -18,7 +18,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { isZiinaPaymentComplete } from "@/lib/booking/ziina";
 import { sendBookingConfirmation, sendOwnerBookingAlert } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
-import { formatBookingConfirmedMessage } from "@/lib/whatsapp/messages";
+import { BOOKING_CONFIRMED_WHATSAPP_MESSAGE } from "@/lib/whatsapp/messages";
 import type { Appointment, Service, ServiceZone } from "@/lib/types";
 
 export { isZiinaConfigured } from "@/lib/booking/ziina";
@@ -116,21 +116,7 @@ export async function confirmBookingIfPaid(bookingId: string): Promise<ConfirmRe
             confirmed.service as Pick<Service, "name">,
             confirmed.zone as Pick<ServiceZone, "name">
           ),
-          // Online payments booked via the WhatsApp bot only get a Ziina
-          // link in-chat, not a booking confirmation — send that back over
-          // WhatsApp too, since customer_phone is that same conversation's
-          // wa_id for whatsapp-sourced bookings.
-          ...((confirmed as Appointment).source === "whatsapp"
-            ? [
-                sendWhatsAppMessage(
-                  confirmed.customer_phone,
-                  formatBookingConfirmedMessage(
-                    confirmed as Appointment,
-                    confirmed.service?.name ?? "your appointment"
-                  )
-                ),
-              ]
-            : []),
+          sendWhatsAppMessage(confirmed.customer_phone, BOOKING_CONFIRMED_WHATSAPP_MESSAGE),
         ]).catch((err) => console.error(`[confirm] email error for booking ${bookingId}:`, err))
       );
       return { outcome: "confirmed", lookupToken: confirmed.lookup_token };

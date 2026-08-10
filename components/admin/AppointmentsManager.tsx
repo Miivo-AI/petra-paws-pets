@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Search, Eye, Check, X, Clock, Wallet, CreditCard, Banknote, MessageCircle } from "lucide-react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -584,16 +583,6 @@ export default function AppointmentsManager({
           </DialogContent>
         )}
       </Dialog>
-
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme="light"
-        toastClassName="!font-sans"
-      />
     </>
   );
 }

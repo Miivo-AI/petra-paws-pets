@@ -98,10 +98,16 @@ export default function Footer() {
 
       {/* ── Copyright bar ── */}
       <div className="border-t border-white/10">
-        <div className="container-petra py-4">
+        <div className="container-petra flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] text-white/35">
             © {new Date().getFullYear()} Petra Paws Pets. All rights reserved.
           </p>
+          <Link
+            href="/privacy"
+            className="text-[11px] text-white/45 hover:text-white transition-colors"
+          >
+            Privacy Policy
+          </Link>
         </div>
       </div>
 

@@ -1,8 +1,6 @@
 /**
- * Shared booking-creation logic (§3.6) — used by both the public web
- * booking flow (app/api/bookings/route.ts) and the WhatsApp booking bot
- * (lib/whatsapp/flow.ts), so the two channels can never drift on pricing,
- * slot validation, holds, idempotency, or Ziina payment handling.
+ * Shared booking-creation logic (§3.6), used by the public web booking
+ * flow (app/api/bookings/route.ts).
  *
  * Flow:
  *  1. Validate input.
@@ -23,6 +21,8 @@ import {
 } from "@/lib/booking/pricing";
 import { createZiinaPayment, isZiinaConfigured } from "@/lib/booking/ziina";
 import { sendBookingConfirmation, sendOwnerBookingAlert } from "@/lib/email";
+import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
+import { BOOKING_CONFIRMED_WHATSAPP_MESSAGE } from "@/lib/whatsapp/messages";
 import type {
   Appointment,
   BookingSource,
@@ -289,6 +289,7 @@ export async function createBooking(
             service as Pick<Service, "name">,
             zone as Pick<ServiceZone, "name">
           ),
+          sendWhatsAppMessage(booking.customer_phone, BOOKING_CONFIRMED_WHATSAPP_MESSAGE),
         ]).catch((err) => console.error("[createBooking] email error:", err))
       );
     }
