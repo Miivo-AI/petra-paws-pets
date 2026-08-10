@@ -3,8 +3,7 @@
  *
  * Thin HTTP wrapper — all the actual booking logic (validation, slot
  * re-check, pricing, atomic insert, Ziina payment intent) lives in
- * lib/booking/createBooking.ts, shared with the WhatsApp booking bot
- * (lib/whatsapp/flow.ts) so the two channels can't drift apart.
+ * lib/booking/createBooking.ts.
  */
 
 import { NextRequest, NextResponse } from "next/server";

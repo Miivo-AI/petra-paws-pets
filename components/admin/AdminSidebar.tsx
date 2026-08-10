@@ -8,6 +8,7 @@ import {
   Scissors,
   CalendarDays,
   Clock,
+  MessageCircle,
   LogOut,
   PawPrint,
   Menu,
@@ -37,6 +38,11 @@ const navItems = [
     href: "/admin/availability",
     label: "Availability",
     icon: Clock,
+  },
+  {
+    href: "/admin/whatsapp",
+    label: "WhatsApp",
+    icon: MessageCircle,
   },
 ];
 

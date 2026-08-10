@@ -1,19 +1,7 @@
 /**
- * Message text shared between the WhatsApp flow's own immediate replies
- * (lib/whatsapp/flow.ts) and the later async confirmation sent once an
- * online payment actually clears (lib/booking/confirm.ts).
+ * Outbound WhatsApp message text, sent alongside the confirmation email
+ * for every booking (lib/booking/confirm.ts, lib/booking/createBooking.ts).
  */
 
-import type { Appointment } from "@/lib/types";
-
-export function formatBookingConfirmedMessage(
-  appt: Pick<Appointment, "booking_reference" | "pet_name" | "date" | "start_time">,
-  serviceName: string
-): string {
-  return (
-    `Payment received — you're all set! ✅\n\n` +
-    `Booking reference: ${appt.booking_reference}\n` +
-    `${serviceName} for ${appt.pet_name} on ${appt.date} at ${appt.start_time}.\n\n` +
-    `We'll see you then!`
-  );
-}
+export const BOOKING_CONFIRMED_WHATSAPP_MESSAGE =
+  "Your booking has been confirmed. We will contact you as soon as possible to confirm the details of your appointment.";

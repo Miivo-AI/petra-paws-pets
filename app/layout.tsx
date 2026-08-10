@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import BookingModal from "@/components/public/BookingModal";
+import Toaster from "@/components/Toaster";
+import GlobalErrorToaster from "@/components/GlobalErrorToaster";
 import "./globals.css";
 
 const geist = Geist({
@@ -51,6 +53,8 @@ export default function RootLayout({
       <body className="font-sans">
         {children}
         <BookingModal />
+        <Toaster />
+        <GlobalErrorToaster />
       </body>
     </html>
   );

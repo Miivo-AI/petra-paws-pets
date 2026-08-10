@@ -17,8 +17,7 @@ email/chat). We'll handle all the technical setup from there.
 
 - Real business phone number (footer currently shows a placeholder)
 - Email address for booking alerts (owner) and admin notices
-- WhatsApp Business number, if you want a WhatsApp contact link added
-- For the WhatsApp **booking bot** (customers book directly in a WhatsApp chat) see `WHATSAPP-BOOKING-CLIENT-SETUP.md` — a separate set of Meta accounts is needed for that
+- WhatsApp Business number + Meta app credentials — every booking sends the customer a WhatsApp confirmation alongside the email; see `WHATSAPP-NOTIFICATIONS-CLIENT-SETUP.md` for how to retrieve them
 
 ## Not needed for launch
 
