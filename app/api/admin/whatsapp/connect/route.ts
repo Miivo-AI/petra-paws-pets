@@ -1,26 +1,32 @@
 /**
  * POST /api/admin/whatsapp/connect
  *
- * Finishes the WhatsApp Embedded Signup flow started by
- * components/admin/WhatsAppConnect.tsx: the browser gets a one-time
- * `code` from the Facebook JS SDK popup plus the WABA ID (and, for a
- * brand-new number, the Phone Number ID) the client picked, and this
- * route exchanges that code for an access token server-side (needs
- * META_APP_SECRET, which must never reach the browser) and stores the
- * connection.
+ * Finishes the Embedded Signup flow started by
+ * components/admin/WhatsAppConnect.tsx: the browser hands over the
+ * one-time `code` from the Facebook JS SDK popup plus the WABA ID (and,
+ * for a brand-new number, the Phone Number ID), and this route exchanges
+ * the code for an access token server-side — META_APP_SECRET must never
+ * reach the browser — then stores the connection.
  *
- * The coexistence flow (featureType: "whatsapp_business_app_onboarding"
- * — a number already active in the WhatsApp Business mobile app) only
- * returns a waba_id, not a phone_number_id, since the number isn't
- * newly selected in that flow. When phoneNumberId is missing, it's
- * looked up here via the WABA's phone_numbers list instead.
+ * The coexistence flow (featureType "whatsapp_business_app_onboarding")
+ * returns only a waba_id, since the number isn't newly selected there.
+ * When phoneNumberId is missing it's looked up from the WABA instead.
+ *
+ * Onboarding continues inline rather than being left to the owner: Meta
+ * gives 24 hours from here to pull contacts and message history, each
+ * request is one-shot, and missing the window means disconnecting and
+ * redoing the whole flow.
  */
 
 import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/supabase/server";
 import { saveWhatsAppConnection } from "@/lib/whatsapp/connection";
-
-const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION ?? "v21.0";
+import {
+  exchangeCodeForToken,
+  getFirstPhoneNumber,
+  getPhoneNumberDetails,
+} from "@/lib/whatsapp/coexistence";
+import { runCoexistenceOnboarding } from "@/lib/whatsapp/onboarding";
 
 export async function POST(request: Request) {
   const user = await requireAdminUser();
@@ -38,7 +44,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const code = body?.code;
   const wabaId = body?.wabaId;
-  let phoneNumberId: string | undefined = body?.phoneNumberId;
+  const providedPhoneNumberId: string | undefined = body?.phoneNumberId;
+
   if (!code || !wabaId) {
     return NextResponse.json(
       { error: "Missing code or wabaId from the signup flow." },
@@ -47,69 +54,50 @@ export async function POST(request: Request) {
   }
 
   try {
-    const tokenRes = await fetch(
-      `https://graph.facebook.com/${WHATSAPP_API_VERSION}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}`
-    );
-    const tokenData = await tokenRes.json();
-    if (!tokenRes.ok || !tokenData.access_token) {
-      console.error("[whatsapp/connect] token exchange failed:", tokenData);
-      return NextResponse.json(
-        { error: tokenData?.error?.message ?? "Failed to exchange code for an access token." },
-        { status: 502 }
-      );
+    const tokenResult = await exchangeCodeForToken({ appId, appSecret, code });
+    if (!tokenResult.ok) {
+      console.error("[whatsapp/connect] token exchange failed:", tokenResult.error);
+      return NextResponse.json({ error: tokenResult.error }, { status: 502 });
     }
-    const accessToken: string = tokenData.access_token;
+    const accessToken = tokenResult.data;
 
-    let displayPhoneNumber: string | null = null;
-    let verifiedName: string | null = null;
+    const detailsResult = providedPhoneNumberId
+      ? await getPhoneNumberDetails({ phoneNumberId: providedPhoneNumberId, token: accessToken })
+      : await getFirstPhoneNumber({ wabaId, token: accessToken });
 
-    if (!phoneNumberId) {
-      const phoneNumbersRes = await fetch(
-        `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const phoneNumbersData = phoneNumbersRes.ok ? await phoneNumbersRes.json() : {};
-      const phoneNumber = phoneNumbersData?.data?.[0];
-      if (!phoneNumber?.id) {
-        console.error("[whatsapp/connect] no phone number found for WABA:", wabaId, phoneNumbersData);
-        return NextResponse.json(
-          { error: "Connected to Meta, but couldn't find a phone number on that WhatsApp Business Account." },
-          { status: 502 }
-        );
-      }
-      phoneNumberId = phoneNumber.id;
-      displayPhoneNumber = phoneNumber.display_phone_number ?? null;
-      verifiedName = phoneNumber.verified_name ?? null;
-    } else {
-      const detailsRes = await fetch(
-        `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${phoneNumberId}?fields=display_phone_number,verified_name`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const details = detailsRes.ok ? await detailsRes.json() : {};
-      displayPhoneNumber = details.display_phone_number ?? null;
-      verifiedName = details.verified_name ?? null;
+    if (!detailsResult.ok) {
+      console.error("[whatsapp/connect] phone number lookup failed:", detailsResult.error);
+      return NextResponse.json({ error: detailsResult.error }, { status: 502 });
     }
-
-    // Best-effort — lets Meta deliver webhooks (message status, quality
-    // rating changes) for this number to our app. Not required for
-    // sending, so a failure here shouldn't block the connection.
-    fetch(`https://graph.facebook.com/${WHATSAPP_API_VERSION}/${wabaId}/subscribed_apps`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }).catch((err) => console.error("[whatsapp/connect] subscribed_apps failed:", err));
+    const details = detailsResult.data;
 
     await saveWhatsAppConnection({
       wabaId,
-      // Always set by this point: either passed in directly, or resolved
-      // via the phone_numbers lookup above (which returns early on failure).
-      phoneNumberId: phoneNumberId!,
+      phoneNumberId: providedPhoneNumberId ?? details.id,
       accessToken,
-      displayPhoneNumber,
-      verifiedName,
+      displayPhoneNumber: details.display_phone_number ?? null,
+      verifiedName: details.verified_name ?? null,
+      isOnBizApp: details.is_on_biz_app ?? null,
+      platformType: details.platform_type ?? null,
       connectedBy: user.id,
     });
 
-    return NextResponse.json({ connected: true, displayPhoneNumber, verifiedName });
+    // Saved before onboarding runs, deliberately: if a sync call fails
+    // the token is still on disk, so the owner can hit "Retry sync"
+    // instead of starting Embedded Signup over from scratch.
+    const onboarding = await runCoexistenceOnboarding();
+
+    return NextResponse.json(
+      {
+        connected: true,
+        displayPhoneNumber: details.display_phone_number ?? null,
+        verifiedName: details.verified_name ?? null,
+        isOnBizApp: details.is_on_biz_app ?? null,
+        platformType: details.platform_type ?? null,
+        onboarding,
+      },
+      { status: onboarding.ok ? 200 : 207 }
+    );
   } catch (err) {
     console.error("[whatsapp/connect] unexpected error:", err);
     return NextResponse.json({ error: "Unexpected error connecting WhatsApp." }, { status: 500 });

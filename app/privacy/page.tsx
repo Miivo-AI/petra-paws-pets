@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import Link from "next/link";
-import Navbar from "@/components/public/Navbar";
-import Footer from "@/components/public/Footer";
+import LegalPage, { type LegalSection } from "@/components/public/LegalPage";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Petra Paws Pets",
@@ -10,7 +8,10 @@ export const metadata: Metadata = {
     "How Petra Paws Pets collects, uses, and protects your personal information when you book mobile pet grooming in Dubai.",
 };
 
-const SECTIONS: { title: string; body: ReactNode }[] = [
+const linkClass =
+  "text-petra-green underline underline-offset-2 hover:text-petra-green-light";
+
+const SECTIONS: LegalSection[] = [
   {
     title: "Who we are",
     body: (
@@ -19,19 +20,19 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
           Petra Paws Pets (&quot;Petra Paws&quot;, &quot;we&quot;, &quot;us&quot;) provides mobile pet
           grooming services in Dubai, UAE. This policy explains how we handle
           personal information when you use{" "}
-          <a href="https://petrapawspets.com" className="text-petra-green underline underline-offset-2 hover:text-petra-green-light">
+          <a href="https://petrapawspets.com" className={linkClass}>
             petrapawspets.com
           </a>{" "}
           or communicate with us about bookings.
         </p>
         <p className="mt-3">
           Contact:{" "}
-          <a href="mailto:petrapawspet@gmail.com" className="text-petra-green underline underline-offset-2 hover:text-petra-green-light">
+          <a href="mailto:petrapawspet@gmail.com" className={linkClass}>
             petrapawspet@gmail.com
           </a>
           {" · "}
           Phone:{" "}
-          <a href="tel:+971541996900" className="text-petra-green underline underline-offset-2 hover:text-petra-green-light">
+          <a href="tel:+971541996900" className={linkClass}>
             +971 54 199 6900
           </a>
           {" · "}
@@ -68,8 +69,8 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
         <li>To create, confirm, and manage your grooming appointment.</li>
         <li>
           To send booking confirmations and service-related updates by{" "}
-          <strong>email</strong> and, when configured, <strong>WhatsApp</strong>{" "}
-          (Meta Platforms) to the phone number you provide.
+          <strong>email</strong> and <strong>WhatsApp</strong> (Meta Platforms)
+          to the phone number you provide.
         </li>
         <li>To contact you about appointment details, changes, or support.</li>
         <li>To process payments and prevent fraud or booking abuse.</li>
@@ -82,16 +83,40 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          If WhatsApp notifications are enabled, we use Meta&apos;s WhatsApp
-          Business Platform to send transactional messages (for example booking
-          confirmations) to the number you entered when booking. Staff may also
-          reply to customer chats on our WhatsApp Business number.
+          We use Meta&apos;s WhatsApp Business Platform to send transactional
+          messages (for example booking confirmations and appointment updates)
+          to the number you entered when booking. Our staff may also reply to
+          customer chats on our WhatsApp Business number.
         </p>
         <p className="mt-3">
-          Meta processes message delivery under its own terms and privacy
-          policy. We only use WhatsApp account and messaging access to operate
-          our own customer communications for Petra Paws Pets—not to sell your
-          data or message unrelated third parties.
+          WhatsApp messages are opt-in. We send them only if you ticked the
+          WhatsApp box on the booking form, or if you messaged us first. We
+          record the wording you agreed to along with the date, and we keep a
+          record of each message we send you (the number, the time, and whether
+          it was delivered) so we can tell whether your confirmation actually
+          reached you.
+        </p>
+        <p className="mt-3">
+          Meta processes message delivery under its own terms and{" "}
+          <a
+            href="https://www.whatsapp.com/legal/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClass}
+          >
+            privacy policy
+          </a>
+          . We only use WhatsApp account and messaging access to operate our own
+          customer communications for Petra Paws Pets—not to sell your data or
+          message unrelated third parties.
+        </p>
+        <p className="mt-3">
+          You can stop WhatsApp messages at any time by replying{" "}
+          <strong>STOP</strong> to any message from us, or by emailing us.
+          Replying STOP takes effect automatically — your number is added to a
+          suppression list and we will not message it again, including if you
+          make another booking later. Reply <strong>START</strong> if you change
+          your mind.
         </p>
       </>
     ),
@@ -132,8 +157,12 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
       <p>
         We keep booking and related records for as long as needed to provide
         the service, meet legal or accounting requirements, and resolve
-        disputes. You may ask us to update or delete personal data where
-        applicable by emailing us.
+        disputes. Our{" "}
+        <Link href="/data-deletion" className={linkClass}>
+          Data Deletion &amp; Retention
+        </Link>{" "}
+        page sets out how long we keep each type of record and how to ask us to
+        delete your data.
       </p>
     ),
   },
@@ -144,15 +173,20 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
         <li>
           You can request access to, correction of, or deletion of your personal
           data by contacting{" "}
-          <a href="mailto:petrapawspet@gmail.com" className="text-petra-green underline underline-offset-2 hover:text-petra-green-light">
+          <a href="mailto:petrapawspet@gmail.com" className={linkClass}>
             petrapawspet@gmail.com
           </a>
-          .
+          . See our{" "}
+          <Link href="/data-deletion" className={linkClass}>
+            data deletion instructions
+          </Link>{" "}
+          for the steps and timelines.
         </li>
         <li>
-          You can opt out of non-essential marketing messages. Transactional
-          booking messages (confirmations and appointment updates) may still be
-          sent when necessary to fulfill your booking.
+          You can opt out of non-essential marketing messages, and stop WhatsApp
+          messages by replying <strong>STOP</strong>. Transactional booking
+          messages (confirmations and appointment updates) may still be sent
+          when necessary to fulfill your booking.
         </li>
       </ul>
     ),
@@ -191,56 +225,17 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-petra-sand">
-      <Navbar />
-      <main className="container-petra py-14 md:py-20">
-        <div className="mx-auto max-w-3xl">
-          <p className="text-sm font-medium text-petra-gold">Legal</p>
-          <h1 className="mt-2 font-serif text-3xl font-semibold text-petra-green md:text-4xl">
-            Privacy Policy
-          </h1>
-          <p className="mt-3 text-sm text-petra-green/70">
-            Last updated: 10 August 2026
-          </p>
-          <p className="mt-6 text-base leading-relaxed text-petra-green/85">
-            This Privacy Policy describes how Petra Paws Pets collects, uses,
-            and shares personal information when you book or inquire about our
-            mobile pet grooming services.
-          </p>
-
-          <div className="mt-10 space-y-10">
-            {SECTIONS.map((section, i) => (
-              <section key={section.title}>
-                <h2 className="font-serif text-xl font-semibold text-petra-green">
-                  {i + 1}. {section.title}
-                </h2>
-                <div className="mt-3 text-sm leading-relaxed text-petra-green/80 md:text-base">
-                  {section.body}
-                </div>
-              </section>
-            ))}
-          </div>
-
-          <p className="mt-12 text-sm text-petra-green/60">
-            Questions?{" "}
-            <Link
-              href="mailto:petrapawspet@gmail.com"
-              className="text-petra-green underline underline-offset-2 hover:text-petra-green-light"
-            >
-              Email us
-            </Link>{" "}
-            or return to the{" "}
-            <Link
-              href="/"
-              className="text-petra-green underline underline-offset-2 hover:text-petra-green-light"
-            >
-              home page
-            </Link>
-            .
-          </p>
-        </div>
-      </main>
-      <Footer />
-    </div>
+    <LegalPage
+      title="Privacy Policy"
+      lastUpdated="11 August 2026"
+      intro={
+        <p>
+          This Privacy Policy describes how Petra Paws Pets collects, uses, and
+          shares personal information when you book or inquire about our mobile
+          pet grooming services.
+        </p>
+      }
+      sections={SECTIONS}
+    />
   );
 }

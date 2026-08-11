@@ -78,6 +78,7 @@ export interface Appointment {
   ziina_redirect_url: string | null;
   ziina_claimed_at: string | null;
   confirmation_sent_at: string | null;
+  whatsapp_sent_at: string | null;
   idempotency_key: string | null;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
@@ -119,6 +120,12 @@ export interface CreateBookingRequest {
   special_notes?: string;
   payment_method: PaymentMethod;
   idempotency_key?: string;
+  /**
+   * Whether the customer ticked the WhatsApp consent box on the booking
+   * form. The wording they agreed to is never taken from the client —
+   * the server records its own copy (lib/whatsapp/consent.ts).
+   */
+  whatsapp_opt_in?: boolean;
 }
 
 // ── Availability response (GET /api/availability) ────────────

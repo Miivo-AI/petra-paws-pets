@@ -17,7 +17,7 @@ email/chat). We'll handle all the technical setup from there.
 
 - Real business phone number (footer currently shows a placeholder)
 - Email address for booking alerts (owner) and admin notices
-- WhatsApp Business number + Meta app credentials — every booking sends the customer a WhatsApp confirmation alongside the email; see `WHATSAPP-NOTIFICATIONS-CLIENT-SETUP.md` for how to retrieve them
+- WhatsApp: decide between **coexistence** (keep using the number in the WhatsApp Business app — needs Tech Provider status and App Review, and an admin connects it from `/admin/whatsapp`) and an **API-only number** (permanent token + Phone Number ID in env, but the phone app stops working on that number). Either way we need the approved template name + language. Full checklist in `WHATSAPP-NOTIFICATIONS-CLIENT-SETUP.md`
 
 ## Not needed for launch
 

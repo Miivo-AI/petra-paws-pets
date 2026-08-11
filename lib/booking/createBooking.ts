@@ -21,8 +21,9 @@ import {
 } from "@/lib/booking/pricing";
 import { createZiinaPayment, isZiinaConfigured } from "@/lib/booking/ziina";
 import { sendBookingConfirmation, sendOwnerBookingAlert } from "@/lib/email";
-import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
-import { BOOKING_CONFIRMED_WHATSAPP_MESSAGE } from "@/lib/whatsapp/messages";
+import { sendBookingConfirmationWhatsApp } from "@/lib/whatsapp/client";
+import { recordOptIn } from "@/lib/whatsapp/contacts";
+import { parsePhone, PHONE_ERROR_MESSAGE } from "@/lib/whatsapp/phone";
 import type {
   Appointment,
   BookingSource,
@@ -63,6 +64,7 @@ export async function createBooking(
     special_notes,
     payment_method,
     idempotency_key,
+    whatsapp_opt_in,
   } = input;
 
   // ── Basic validation ─────────────────────────────────────────
@@ -91,6 +93,17 @@ export async function createBooking(
   if (!["online", "pay_on_arrival"].includes(payment_method)) {
     return { ok: false, status: 400, error: "Invalid payment_method" };
   }
+
+  // Store E.164, not whatever the customer typed. The previous rule
+  // ("strip non-digits, swap a leading 0 for 971") turned 00971… and
+  // foreign numbers into valid-looking numbers belonging to other
+  // people, so an unparseable number is now a validation error rather
+  // than a guess.
+  const parsedPhone = parsePhone(customer_phone);
+  if (!parsedPhone.ok) {
+    return { ok: false, status: 400, error: PHONE_ERROR_MESSAGE };
+  }
+  const phoneE164 = parsedPhone.e164;
 
   if (payment_method === "online" && !isZiinaConfigured()) {
     console.error("[createBooking] ZIINA_API_KEY is not configured — refusing online booking");
@@ -194,7 +207,7 @@ export async function createBooking(
       p_customer_address: customer_address ?? null,
       p_customer_name: customer_name,
       p_customer_email: customer_email,
-      p_customer_phone: customer_phone,
+      p_customer_phone: phoneE164,
       p_pet_name: pet_name,
       p_pet_breed: pet_breed ?? null,
       p_special_notes: special_notes ?? null,
@@ -255,6 +268,19 @@ export async function createBooking(
     };
   }
 
+  // Recorded here rather than at send time because online bookings send
+  // their confirmation much later (after payment), and the send is gated
+  // on consent already being on file. Opting out always wins, so a
+  // customer who replied STOP isn't quietly re-subscribed by booking
+  // again — only an explicit START reply clears that.
+  if (whatsapp_opt_in) {
+    await recordOptIn({
+      phoneE164,
+      source: "booking_form",
+      appointmentId: booking.id,
+    });
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   // ── Pay on arrival: confirmed immediately, no payment gateway ─
@@ -289,8 +315,18 @@ export async function createBooking(
             service as Pick<Service, "name">,
             zone as Pick<ServiceZone, "name">
           ),
-          sendWhatsAppMessage(booking.customer_phone, BOOKING_CONFIRMED_WHATSAPP_MESSAGE),
         ]).catch((err) => console.error("[createBooking] email error:", err))
+      );
+
+      // Separate from the email batch on purpose: WhatsApp claims its own
+      // appointments.whatsapp_sent_at, so a WhatsApp failure can be
+      // retried by the reconcile cron without re-sending both emails.
+      after(() =>
+        sendBookingConfirmationWhatsApp({
+          appointment: booking as Appointment,
+          serviceName: service.name,
+          zoneName: zone.name,
+        }).catch((err) => console.error("[createBooking] whatsapp error:", err))
       );
     }
 
