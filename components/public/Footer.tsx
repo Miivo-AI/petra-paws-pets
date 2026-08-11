@@ -102,12 +102,26 @@ export default function Footer() {
           <p className="text-[11px] text-white/35">
             © {new Date().getFullYear()} Petra Paws Pets. All rights reserved.
           </p>
-          <Link
-            href="/privacy"
-            className="text-[11px] text-white/45 hover:text-white transition-colors"
-          >
-            Privacy Policy
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link
+              href="/privacy"
+              className="text-[11px] text-white/45 hover:text-white transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              className="text-[11px] text-white/45 hover:text-white transition-colors"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              href="/data-deletion"
+              className="text-[11px] text-white/45 hover:text-white transition-colors"
+            >
+              Data deletion
+            </Link>
+          </div>
         </div>
       </div>
 

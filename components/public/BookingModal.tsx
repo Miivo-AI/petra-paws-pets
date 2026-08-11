@@ -19,6 +19,8 @@ import { CalendarPanel } from "@/components/ui/calendar-panel";
 import { TimeSlotPanel } from "@/components/ui/time-slot-panel";
 import { useBookingModalStore } from "@/lib/store/booking-modal";
 import { lookupPrice, calculateTotals } from "@/lib/booking/pricing";
+import { WHATSAPP_CONSENT_TEXT } from "@/lib/whatsapp/consent";
+import { isValidPhone, PHONE_ERROR_MESSAGE } from "@/lib/whatsapp/phone";
 import { cn, formatCurrency, formatDate, formatTime } from "@/lib/utils";
 import type {
   PaymentMethod,
@@ -36,7 +38,6 @@ const DOG_SIZES: { value: PetSize; label: string }[] = [
 ];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^\+?[0-9\s-]{7,15}$/;
 
 const REDIRECT_ERROR_MESSAGES: Record<string, string> = {
   payment_failed: "Your payment didn't go through. Please try again.",
@@ -119,6 +120,12 @@ export default function BookingModal() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [notes, setNotes] = useState("");
+  // Pre-ticked because these are transactional confirmations for a
+  // booking the customer is making right now, and the disclosure sits
+  // directly under the phone field they just filled in. Unticking it is
+  // honoured end to end — no opt-in is recorded, so nothing is ever sent
+  // to that number.
+  const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [step2Touched, setStep2Touched] = useState(false);
 
   const [slots, setSlots] = useState<string[]>([]);
@@ -180,6 +187,7 @@ export default function BookingModal() {
     setOwnerName("");
     setPhone("");
     setEmail("");
+    setWhatsappOptIn(true);
     setZoneId("");
     setAddress("");
     setDate("");
@@ -339,8 +347,10 @@ export default function BookingModal() {
     if (!email.trim()) errors.email = "Email is required.";
     else if (!EMAIL_RE.test(email.trim())) errors.email = "Enter a valid email address.";
     if (!phone.trim()) errors.phone = "Phone number is required.";
-    else if (!PHONE_RE.test(phone.trim()))
-      errors.phone = "Enter a valid phone number.";
+    // Real parsing rather than a length/charset regex: the old pattern
+    // accepted 7 digits of anything while rejecting correctly formatted
+    // numbers whose spaces pushed them past 15 characters.
+    else if (!isValidPhone(phone)) errors.phone = PHONE_ERROR_MESSAGE;
     if (!zoneId) errors.zoneId = "Please select your area.";
     if (!address.trim()) errors.address = "Full address is required.";
     if (!date) errors.date = "Please pick a date.";
@@ -410,6 +420,7 @@ export default function BookingModal() {
           special_notes: notes || undefined,
           payment_method: method,
           idempotency_key: idempotencyKey,
+          whatsapp_opt_in: whatsappOptIn,
         }),
       });
 
@@ -707,6 +718,30 @@ export default function BookingModal() {
                     />
                     <FieldError message={step2Touched ? step2Errors.email : undefined} />
                   </div>
+
+                  {/* Sits at the point of collection, immediately under the
+                      phone number it applies to — this is the screen Meta's
+                      App Review looks for as evidence of WhatsApp opt-in, and
+                      it names both the channel and the business. */}
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-petra-green/5 p-3">
+                    <input
+                      type="checkbox"
+                      checked={whatsappOptIn}
+                      onChange={(e) => setWhatsappOptIn(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-petra-green"
+                    />
+                    <span className="text-xs leading-relaxed text-petra-green/80">
+                      {WHATSAPP_CONSENT_TEXT} See our{" "}
+                      <Link href="/terms" target="_blank" className="underline">
+                        Terms
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/privacy" target="_blank" className="underline">
+                        Privacy Policy
+                      </Link>
+                      . You&apos;ll still get an email confirmation either way.
+                    </span>
+                  </label>
 
                   <div>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-petra-green/50">

@@ -17,8 +17,7 @@ import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { isZiinaPaymentComplete } from "@/lib/booking/ziina";
 import { sendBookingConfirmation, sendOwnerBookingAlert } from "@/lib/email";
-import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
-import { BOOKING_CONFIRMED_WHATSAPP_MESSAGE } from "@/lib/whatsapp/messages";
+import { sendBookingConfirmationWhatsApp } from "@/lib/whatsapp/client";
 import type { Appointment, Service, ServiceZone } from "@/lib/types";
 
 export { isZiinaConfigured } from "@/lib/booking/ziina";
@@ -116,8 +115,18 @@ export async function confirmBookingIfPaid(bookingId: string): Promise<ConfirmRe
             confirmed.service as Pick<Service, "name">,
             confirmed.zone as Pick<ServiceZone, "name">
           ),
-          sendWhatsAppMessage(confirmed.customer_phone, BOOKING_CONFIRMED_WHATSAPP_MESSAGE),
         ]).catch((err) => console.error(`[confirm] email error for booking ${bookingId}:`, err))
+      );
+
+      // Kept out of the email batch so a transient WhatsApp failure can
+      // be retried on its own (appointments.whatsapp_sent_at) by
+      // /api/cron/reconcile-bookings instead of re-sending both emails.
+      after(() =>
+        sendBookingConfirmationWhatsApp({
+          appointment: confirmed as Appointment,
+          serviceName: (confirmed.service as Pick<Service, "name"> | null)?.name ?? null,
+          zoneName: (confirmed.zone as Pick<ServiceZone, "name"> | null)?.name ?? null,
+        }).catch((err) => console.error(`[confirm] whatsapp error for booking ${bookingId}:`, err))
       );
       return { outcome: "confirmed", lookupToken: confirmed.lookup_token };
     }

@@ -20,7 +20,7 @@ the app handles scheduling, travel-time-aware availability, pricing, payment
 
 ```bash
 npm install
-cp .env.local.example .env.local   # fill in the values below
+cp .env.example .env   # fill in the values below
 npm run dev
 ```
 
@@ -38,19 +38,61 @@ all require it.
 | `RESEND_API_KEY` / `EMAIL_FROM` / `OWNER_EMAIL` | Transactional email (customer confirmation + owner alert) |
 | `NEXT_PUBLIC_SITE_URL` | Used to build redirect/callback URLs (Ziina, magic links) |
 
-See [`.env.local.example`](.env.local.example) for the full list.
+See [`.env.example`](.env.example) for the full list.
 
 ### Database
 
 Migrations live in [`supabase/migrations/`](supabase/migrations/) and run in
-order against your Supabase project (via the SQL editor, or `supabase db
-push` if you have the CLI linked):
+filename order:
 
 1. `001_initial_schema.sql` — base tables
 2. `002_prd_schema.sql` — services, zones, pricing matrix, blackouts,
    appointments, travel-time cache, RLS policies, seed data
 3. `003_pay_on_arrival.sql` — adds `payment_method` / `payment_status` to
    appointments
+4. `004_booking_integrity.sql` — atomic booking RPC, idempotency,
+   confirmation dedupe
+5. `005`–`008` — the WhatsApp booking bot and Embedded Signup tables,
+   added and then removed again
+6. `009_whatsapp_coexistence.sql` — WhatsApp coexistence connection,
+   consent ledger, and outbound delivery log
+
+#### Applying them
+
+[`scripts/migrate.mjs`](scripts/migrate.mjs) applies whatever hasn't run
+yet, tracked in a `schema_migrations` table. Each migration runs in its own
+transaction, so a failure rolls back cleanly instead of leaving half a
+schema change behind.
+
+```bash
+npm run db:status                    # what's applied, what's pending
+npm run db:migrate                   # apply everything pending
+npm run db:migrate -- --dry-run      # show what would run, change nothing
+```
+
+Needs `SUPABASE_DB_URL` in `.env` (or `.env.local`). Get it from the
+Supabase Dashboard: press **Connect** at the top of the project page and
+copy the URI under **Session pooler** — then fill in the database password.
+Use the **session-mode pooler (port 5432)** or the direct connection; the
+transaction-mode pooler on 6543 can't run DDL reliably. Nothing else in the
+app uses this variable.
+
+> **First run against an existing database.** Production was migrated by
+> hand through the SQL Editor, so the tracking table starts empty and
+> running `db:migrate` would try to re-apply `001`. Record what already ran
+> first, naming the last migration that was applied:
+>
+> ```bash
+> npm run db:baseline -- --through 008   # marks 001–008 applied, doesn't run them
+> npm run db:migrate                     # applies 009 onwards for real
+> ```
+>
+> `db:migrate` detects this situation and refuses rather than failing
+> mid-way. Double-check the cutoff in the Supabase Table Editor —
+> anything baselined by mistake will never run.
+
+Editing a migration that has already been applied is flagged on the next
+run via a checksum mismatch. Add a new file instead.
 
 ## Project structure
 
@@ -149,8 +191,12 @@ unauthenticated requests to `/login` (Supabase Auth session cookies).
 ## Scripts
 
 ```bash
-npm run dev      # start dev server
-npm run build    # production build
-npm run start    # run the production build
-npm run lint     # eslint
+npm run dev          # start dev server
+npm run build        # production build
+npm run start        # run the production build
+npm run lint         # eslint
+
+npm run db:status    # list applied / pending migrations
+npm run db:migrate   # apply pending migrations
+npm run db:baseline  # record migrations as applied without running them
 ```

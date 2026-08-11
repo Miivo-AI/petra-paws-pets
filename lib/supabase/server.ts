@@ -37,7 +37,7 @@ export async function createClient() {
 /**
  * For API routes (unlike pages, not covered by app/admin/layout.tsx's
  * redirect) that need to confirm the caller is a signed-in admin before
- * touching anything sensitive — e.g. app/api/admin/whatsapp/*.
+ * touching anything sensitive.
  */
 export async function requireAdminUser() {
   const supabase = await createClient();

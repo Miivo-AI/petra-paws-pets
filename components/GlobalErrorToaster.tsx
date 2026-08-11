@@ -7,8 +7,8 @@ import { toast } from "react-toastify";
  * App-wide safety net: surfaces any error that reaches the browser's
  * top-level handlers as a toast, so a bug nobody wrapped in a try/catch
  * still tells the user something went wrong instead of failing silently.
- * Errors already caught and reported locally (e.g. the WhatsApp connect
- * flow's own toast.error calls) never reach these listeners, so nothing
+ * Errors already caught and reported locally (e.g. a form's own
+ * toast.error calls) never reach these listeners, so nothing
  * double-toasts.
  */
 export default function GlobalErrorToaster() {
