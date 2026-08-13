@@ -37,6 +37,9 @@ built here should target v4.
 
 ### The owner must know these before connecting
 
+`WHATSAPP-OWNER-BRIEFING.md` covers all of this in plain language — send
+that to the owner rather than this file.
+
 Connecting changes the WhatsApp Business app on their phone, permanently:
 
 - All linked devices are unlinked and have to be paired again.
