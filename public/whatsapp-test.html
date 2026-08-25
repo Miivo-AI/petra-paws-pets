@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Petra Paws — WhatsApp Embedded Signup Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 2rem; max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.25rem; margin-bottom: .25rem; }
+  p.sub { color: #666; font-size: .875rem; margin-bottom: 1.5rem; }
+  button { background: #25D366; color: #fff; border: none; padding: .75rem 1.5rem; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  button:hover { background: #1ebe5d; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #log { margin-top: 1.5rem; background: #1a1a1a; color: #0f0; font-family: 'SF Mono', 'Fira Code', monospace; font-size: .8rem; padding: 1rem; border-radius: 8px; max-height: 50vh; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .entry { margin-bottom: .5rem; border-bottom: 1px solid #333; padding-bottom: .5rem; }
+  .entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .ts { color: #888; }
+  .label { color: #4fc3f7; font-weight: 600; }
+  .warn { color: #ffa726; }
+  .err { color: #ef5350; }
+  .ok { color: #66bb6a; }
+</style>
+</head>
+<body>
+
+<h1>Petra Paws — WhatsApp Coexistence Test</h1>
+<p class="sub">Standalone test harness. Opens the Meta Embedded Signup popup, logs the authorization code, WABA ID, and completion event.</p>
+
+<button id="connect" disabled>Loading Facebook SDK…</button>
+
+<div id="log"></div>
+
+<script>
+const APP_ID = '2073272626898048';
+const CONFIG_ID = '1043623725073001';
+const API_VERSION = 'v21.0';
+
+const logEl = document.getElementById('log');
+const btn = document.getElementById('connect');
+
+function ts() {
+  return new Date().toLocaleTimeString('en-GB', { hour12: false, fractionalSecondDigits: 3 });
+}
+
+function log(label, data, cls) {
+  const div = document.createElement('div');
+  div.className = 'entry';
+  const clsName = cls || '';
+  div.innerHTML =
+    '<span class="ts">[' + ts() + ']</span> ' +
+    '<span class="label ' + clsName + '">' + label + '</span>\n' +
+    (data !== undefined ? JSON.stringify(data, null, 2) : '');
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log('[WA-TEST]', label, data);
+}
+
+// Listen for the WA_EMBEDDED_SIGNUP postMessage from the popup
+window.addEventListener('message', function(event) {
+  if (event.origin !== 'https://www.facebook.com') return;
+  var data;
+  try { data = JSON.parse(event.data); } catch(e) { return; }
+
+  if (data.type === 'WA_EMBEDDED_SIGNUP') {
+    if (data.event === 'FINISH' || data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
+      log('EMBEDDED SIGNUP COMPLETE', {
+        event: data.event,
+        waba_id: data.data && data.data.waba_id,
+        phone_number_id: data.data && data.data.phone_number_id
+      }, 'ok');
+    } else if (data.event === 'CANCEL') {
+      log('EMBEDDED SIGNUP CANCELLED', data, 'warn');
+    } else {
+      log('EMBEDDED SIGNUP EVENT', data);
+    }
+  }
+});
+
+// FB SDK init
+window.fbAsyncInit = function() {
+  FB.init({ appId: APP_ID, cookie: true, xfbml: false, version: API_VERSION });
+  log('FB SDK ready', { appId: APP_ID, version: API_VERSION }, 'ok');
+  btn.disabled = false;
+  btn.textContent = 'Connect Petra Paws WhatsApp';
+};
+
+// Load FB SDK
+(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = 'https://connect.facebook.net/en_US/sdk.js';
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));
+
+// Connect button
+btn.addEventListener('click', function() {
+  btn.disabled = true;
+  btn.textContent = 'Waiting for popup…';
+  log('Opening Embedded Signup popup…', { config_id: CONFIG_ID, featureType: 'whatsapp_business_app_onboarding' });
+
+  var timeout = setTimeout(function() {
+    log('Popup timed out after 2 minutes', null, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Connect Petra Paws WhatsApp';
+  }, 120000);
+
+  FB.login(function(response) {
+    clearTimeout(timeout);
+    btn.disabled = false;
+    btn.textContent = 'Connect Petra Paws WhatsApp';
+
+    if (response.authResponse && response.authResponse.code) {
+      log('AUTH CODE RECEIVED', {
+        code: response.authResponse.code,
+        code_length: response.authResponse.code.length
+      }, 'ok');
+      log('FULL authResponse', response.authResponse);
+    } else {
+      log('No auth code — popup was closed or cancelled', response, 'warn');
+    }
+  }, {
+    config_id: CONFIG_ID,
+    response_type: 'code',
+    override_default_response_type: true,
+    extras: {
+      setup: {},
+      featureType: 'whatsapp_business_app_onboarding',
+      sessionInfoVersion: '3'
+    }
+  });
+});
+</script>
+
+</body>
+</html>
